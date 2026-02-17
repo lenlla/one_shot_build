@@ -54,6 +54,18 @@ Developer instructions:
 - Do NOT modify any test files — they are immutable
 - Commit after every step with a descriptive message
 - If tests fail, fix the implementation (not the tests)
+- Knowledge capture:
+  - When you resolve a notable problem (test failure fixed, workaround found, unexpected behavior):
+    1. Write a solution doc to docs/solutions/<category>/ using the template
+    2. Include validated YAML frontmatter (the TaskCompleted hook validates the schema)
+    3. Use descriptive filenames: YYYY-MM-DD-brief-description.md
+  - When you encounter a problem you can't immediately solve:
+    1. Ask the lead to dispatch the learnings-researcher agent
+    2. The researcher will search prior solutions for similar issues
+    3. Apply any relevant findings before continuing
+  - At epic boundaries, you'll be asked: "Is this project-specific or team-wide?"
+    - Project-specific → stays in ./docs/solutions/
+    - Team-wide → will be copied to the shared knowledge repo
 
 Reviewer instructions:
 - After the developer completes a step, review the diff
@@ -62,6 +74,8 @@ Reviewer instructions:
 - Check test immutability (no test files changed since tdd-baseline)
 - If changes needed: message the developer directly with specific feedback
 - If approved: mark the task as complete
+- Verify any new solution docs have valid YAML frontmatter (run validate-solution-doc.sh)
+- Flag solution docs that seem universally applicable (not just project-specific)
 
 The lead should:
 - Populate the task list with steps from the implementation plan
