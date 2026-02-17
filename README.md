@@ -80,11 +80,43 @@ claude plugins install <path-to-this-repo>
 | `/board` | Any | Launch Kanban dashboard |
 | `/prune-knowledge` | Any | Clean up solution docs |
 
+## Plugin Architecture
+
+```
+├── .claude-plugin/          # Plugin manifest
+├── agents/                  # Agent definitions (reviewer, profiler, learnings-researcher)
+├── commands/                # Slash commands (/init, /status, /next, etc.)
+├── dashboard/               # Kanban board (HTML/CSS/JS + serve.sh)
+├── hooks/                   # Session-start hook, enforcement scripts, self-check
+├── lib/                     # State library (YAML read/write)
+├── mcp/                     # MCP servers (Databricks executor)
+├── skills/                  # Phase skills + utility skills
+├── templates/               # Project scaffolding templates
+├── tests/                   # BATS test suite (24 tests)
+└── docs/                    # Architecture, plans, infrastructure guides
+```
+
+### Key Components
+
+| Component | Description |
+|-----------|-------------|
+| **State library** | Read/write `project-state.yaml` with BATS tests |
+| **Phase skills** | gather-context, define-epics, plan-epic, build-step, submit-epic |
+| **Enforcement scripts** | Test immutability, definition-of-done, solution doc validation |
+| **Self-check CLI** | Pre-completion verification (tests, immutability, docs, git status) |
+| **Compound learning** | Solution docs with YAML schema, contradiction detection, cross-project promotion |
+| **Learnings researcher** | Agent that searches prior solutions for relevant patterns |
+| **Knowledge pruning** | Periodic cleanup of stale/superseded/duplicate solution docs |
+| **Databricks MCP server** | Execute code, manage clusters, upload/download files via MCP |
+| **Kanban dashboard** | Browser-based board with filtering, auto-refresh, dark mode |
+| **VM isolation** | Setup guide and session-start safety warning for autonomous execution |
+
 ## Design Documentation
 
 - Architecture: `docs/plans/2026-02-16-harness-architecture-design.md`
 - Implementation plan: `docs/plans/2026-02-16-harness-implementation-plan.md`
+- VM setup: `docs/infrastructure/vm-setup.md`
 
 ## Project Status
 
-**Phase: Implementation** — Plugin foundation, state library, templates, skills, hooks, enforcement scripts, and agent definitions are built. Compound learning system and Databricks integration in progress.
+**Phase: Complete** — All 19 implementation epics built and reviewed. 24 BATS tests passing. Ready for integration testing on a real client project.
