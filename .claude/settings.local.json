@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:openai.com)",
+      "WebFetch(domain:x.com)",
+      "WebSearch",
+      "WebFetch(domain:www.anthropic.com)",
+      "WebFetch(domain:www.philschmid.de)",
+      "WebFetch(domain:app.daily.dev)",
+      "WebFetch(domain:www.gend.co)",
+      "WebFetch(domain:www.dotnetramblings.com)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(python3:*)",
+      "Bash(where:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" --version)",
+      "Bash(\"/c/Program Files \\(x86\\)/GitHub CLI/gh.exe\" --version)",
+      "Bash(cmd //c \"gh --version\")",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI:/c/Users/LenLlaguno/AppData/Local/GitHub CLI\")",
+      "Bash(gh:*)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:steipete.me)",
+      "WebFetch(domain:every.to)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI:/c/Users/LenLlaguno/AppData/Local/Programs/GitHub CLI:/c/Program Files \\(x86\\)/GitHub CLI\")"
+    ]
+  }
+}
