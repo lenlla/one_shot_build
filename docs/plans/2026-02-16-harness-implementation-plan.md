@@ -2507,6 +2507,320 @@ git commit -m "feat: add debrief requirement to build-step skill"
 
 ---
 
+## Epic 14: Agent-Discoverable Docs + Cross-Project Knowledge
+
+### Task 14.1: Update init skill to create learnings directory structure
+
+**Files:**
+- Modify: `skills/harness-init/SKILL.md`
+
+**Step 1: Add learnings directory to the scaffold**
+
+In the "Directory Structure to Create" section, add:
+
+```
+├── docs/
+│   ├── context/
+│   │   └── learnings/         # Topic-based learning files (agent-discoverable)
+```
+
+In the "After Scaffolding" section, add:
+
+Create seed files in `docs/context/learnings/`:
+
+```bash
+echo "# Data Quirks\n\nLearnings about the client data discovered during this project.\n" > docs/context/learnings/data-quirks.md
+echo "# Model Library Notes\n\nLearnings about the in-house modeling library.\n" > docs/context/learnings/model-library-notes.md
+echo "# PySpark Gotchas\n\nPySpark-specific issues and workarounds.\n" > docs/context/learnings/pyspark-gotchas.md
+echo "# Failed Approaches\n\nApproaches that were tried and why they didn't work.\n" > docs/context/learnings/failed-approaches.md
+```
+
+**Step 2: Commit**
+
+```bash
+git add skills/harness-init/SKILL.md
+git commit -m "feat: add agent-discoverable learnings directory to init scaffold"
+```
+
+### Task 14.2: Update debrief protocol to distill into topic files
+
+**Files:**
+- Modify: `skills/build-step/SKILL.md`
+
+**Step 1: Add topic distillation instructions**
+
+In the developer teammate instructions, after the debrief entry requirement, add:
+
+```
+- After writing the debrief entry, check if any discoveries are topic-specific:
+  - Data-related learnings → append to docs/context/learnings/data-quirks.md
+  - Model library learnings → append to docs/context/learnings/model-library-notes.md
+  - PySpark learnings → append to docs/context/learnings/pyspark-gotchas.md
+  - Failed approaches → append to docs/context/learnings/failed-approaches.md
+  - If a new topic emerges, create a new file with a descriptive name
+- Topic files are summaries for quick reference; debrief-log.yaml is the detailed record
+```
+
+**Step 2: Commit**
+
+```bash
+git add skills/build-step/SKILL.md
+git commit -m "feat: add topic-based learnings distillation to developer workflow"
+```
+
+### Task 14.3: Create plugin-level knowledge directory
+
+**Files:**
+- Create: `knowledge/README.md`
+- Create: `knowledge/model-library.md`
+- Create: `knowledge/pyspark-patterns.md`
+- Create: `knowledge/common-pitfalls.md`
+
+**Step 1: Create the knowledge directory with seed files**
+
+`knowledge/README.md`:
+```markdown
+# Cross-Project Knowledge Base
+
+This directory contains learnings that apply across all client projects.
+These files are NOT project-specific — they capture knowledge about shared
+tools, libraries, and patterns.
+
+Agents read these files via the SessionStart hook. New entries should be
+added via PR to the plugin repo when a project-specific learning is
+identified as universally applicable.
+
+## How Learnings Get Here
+
+1. During a client project, agents write to `docs/context/learnings/` (project-level)
+2. At epic boundaries, the orchestrator reviews debrief entries
+3. Learnings that are not project-specific are promoted here via PR
+4. The SessionStart hook includes relevant knowledge in agent context
+```
+
+`knowledge/model-library.md`:
+```markdown
+# In-House Model Library
+
+Learnings about the custom modeling library used across client projects.
+
+<!-- Entries are added as they're discovered across projects -->
+```
+
+`knowledge/pyspark-patterns.md`:
+```markdown
+# PySpark Patterns
+
+PySpark patterns and gotchas that apply across all client projects.
+
+<!-- Entries are added as they're discovered across projects -->
+```
+
+`knowledge/common-pitfalls.md`:
+```markdown
+# Common Pitfalls
+
+Recurring mistakes and their solutions discovered across client projects.
+
+<!-- Entries are added as they're discovered across projects -->
+```
+
+**Step 2: Commit**
+
+```bash
+git add knowledge/
+git commit -m "feat: add plugin-level cross-project knowledge base"
+```
+
+### Task 14.4: Update session-start hook to inject plugin knowledge
+
+**Files:**
+- Modify: `hooks/session-start.sh`
+
+**Step 1: Add plugin knowledge injection**
+
+After the existing debrief learnings injection, add:
+
+```bash
+# Include relevant cross-project knowledge from plugin
+KNOWLEDGE_DIR="${PLUGIN_ROOT}/knowledge"
+if [[ -d "$KNOWLEDGE_DIR" ]]; then
+    knowledge_files=$(ls "$KNOWLEDGE_DIR"/*.md 2>/dev/null | grep -v README.md || true)
+    if [[ -n "$knowledge_files" ]]; then
+        # Check if any knowledge files have content beyond the header
+        has_content=false
+        for kfile in $knowledge_files; do
+            line_count=$(wc -l < "$kfile" | tr -d ' ')
+            if [[ "$line_count" -gt 5 ]]; then
+                has_content=true
+                break
+            fi
+        done
+        if [[ "$has_content" == "true" ]]; then
+            context+="\\n\\n## Cross-Project Knowledge\\n"
+            context+="See plugin knowledge/ directory for learnings from prior projects.\\n"
+        fi
+    fi
+fi
+```
+
+**Step 2: Run session-start tests to verify no regression**
+
+Run: `npx bats tests/session_start_test.bats`
+Expected: All tests PASS
+
+**Step 3: Commit**
+
+```bash
+git add hooks/session-start.sh
+git commit -m "feat: inject cross-project knowledge from plugin into session context"
+```
+
+### Task 14.5: Update submit-epic skill to promote learnings
+
+**Files:**
+- Modify: `skills/submit-epic/SKILL.md`
+
+**Step 1: Add knowledge promotion step**
+
+After the quality scan step and before creating the PR, add:
+
+```markdown
+### Step 2.5: Promote cross-project learnings
+
+Review `docs/context/debrief-log.yaml` entries for this epic. Identify learnings that are NOT project-specific — they apply to the in-house library, PySpark in general, or common patterns.
+
+For each cross-project learning, suggest adding it to the plugin's `knowledge/` directory. Present to the user:
+
+"These learnings from this epic might help future projects:
+- [learning 1] → knowledge/model-library.md
+- [learning 2] → knowledge/pyspark-patterns.md
+
+Want me to create a PR to the plugin repo with these additions?"
+
+If approved, use `gh` to create a PR to the plugin repository adding the learnings.
+```
+
+**Step 2: Commit**
+
+```bash
+git add skills/submit-epic/SKILL.md
+git commit -m "feat: add cross-project learning promotion to submit-epic skill"
+```
+
+---
+
+## Epic 15: Self-Verification CLI Pattern
+
+### Task 15.1: Create self-check script
+
+**Files:**
+- Create: `hooks/self-check.sh`
+
+**Step 1: Write the script**
+
+A wrapper that runs all verification checks that the developer should run before marking a step complete:
+
+```bash
+#!/usr/bin/env bash
+# hooks/self-check.sh
+# Runs all pre-completion checks. Intended to be called by the developer
+# agent before marking a task complete, as a self-verification step.
+# Usage: self-check.sh <step-name> <epic-name> [tdd-baseline-ref]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+
+STEP="${1:?Usage: self-check.sh <step-name> <epic-name> [tdd-baseline-ref]}"
+EPIC="${2:?Usage: self-check.sh <step-name> <epic-name> [tdd-baseline-ref]}"
+BASELINE="${3:-tdd-baseline}"
+
+echo "=== Self-Verification Check ==="
+echo "Step: $STEP | Epic: $EPIC"
+echo ""
+
+passed=0
+failed=0
+
+# Check 1: Tests pass
+echo "--- Running tests ---"
+if pytest tests/ -v --tb=short 2>&1; then
+    echo "  PASS: Tests"
+    passed=$((passed + 1))
+else
+    echo "  FAIL: Tests"
+    failed=$((failed + 1))
+fi
+echo ""
+
+# Check 2: Test immutability
+echo "--- Checking test immutability ---"
+if bash "${SCRIPT_DIR}/check-test-immutability.sh" "$BASELINE" 2>&1; then
+    passed=$((passed + 1))
+else
+    failed=$((failed + 1))
+fi
+echo ""
+
+# Check 3: Debrief exists
+echo "--- Checking debrief ---"
+if bash "${SCRIPT_DIR}/check-debrief.sh" "$STEP" "$EPIC" 2>&1; then
+    passed=$((passed + 1))
+else
+    failed=$((failed + 1))
+fi
+echo ""
+
+# Check 4: No uncommitted changes
+echo "--- Checking git status ---"
+if [[ -z "$(git status --porcelain 2>/dev/null)" ]]; then
+    echo "  PASS: All changes committed"
+    passed=$((passed + 1))
+else
+    echo "  FAIL: Uncommitted changes detected"
+    failed=$((failed + 1))
+fi
+echo ""
+
+# Summary
+echo "=== Self-Check Complete ==="
+echo "$passed passed, $failed failed"
+
+if [[ $failed -gt 0 ]]; then
+    echo "Fix the above issues before marking the step complete."
+    exit 1
+else
+    echo "All checks pass. Safe to mark step as complete."
+    exit 0
+fi
+```
+
+**Step 2: Make executable**
+
+```bash
+chmod +x hooks/self-check.sh
+```
+
+**Step 3: Update developer prompt in build-step skill**
+
+In the developer teammate instructions, add:
+
+```
+- Before marking a step complete, run self-verification:
+  bash <plugin_root>/hooks/self-check.sh <step-name> <epic-name> tdd-baseline-<epic>
+- Fix any failures before proceeding. Do NOT rely on the TaskCompleted hook to catch these.
+```
+
+**Step 4: Commit**
+
+```bash
+git add hooks/self-check.sh skills/build-step/SKILL.md
+git commit -m "feat: add self-check verification script for developer pre-completion"
+```
+
+---
+
 ## Summary
 
 | Epic | Tasks | Description |
@@ -2524,5 +2838,7 @@ git commit -m "feat: add debrief requirement to build-step skill"
 | 11 | 11.1-11.2 | Remaining commands (/next, review-step) |
 | 12 | 12.1-12.4 | Integration, cleanup, test run, README |
 | 13 | 13.1-13.4 | Agent debrief protocol with tests (TDD) |
+| 14 | 14.1-14.5 | Agent-discoverable docs + cross-project knowledge |
+| 15 | 15.1 | Self-verification CLI pattern |
 
-**Total: 13 epics, 29 tasks**
+**Total: 15 epics, 35 tasks**

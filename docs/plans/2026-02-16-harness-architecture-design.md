@@ -376,15 +376,68 @@ Reviewer entries capture review-specific insights:
 | Mechanism | Scope | When |
 |---|---|---|
 | Agent team messaging | Within current session | Real-time during build/review |
-| `debrief-log.yaml` | Across sessions | Read by `SessionStart` hook, injected as context |
+| Topic-based learnings files | Across sessions | Read by agents based on current work context |
 | Orchestrator spawn prompts | Into new teammates | Relevant prior debriefs included when spawning developer/reviewer |
 | `CLAUDE.md` distillation | Permanent project knowledge | At epic boundaries, orchestrator distills recurring learnings into CLAUDE.md |
+| Plugin-level knowledge base | Across all client projects | Non-project-specific learnings promoted to plugin's `knowledge/` directory |
+
+### Agent-Discoverable Documentation
+
+Instead of one monolithic `debrief-log.yaml`, learnings are organized into topic-based files with descriptive names that agents can self-select based on their current work:
+
+```
+docs/context/learnings/
+├── data-quirks.md            # Agent finds this when working on data loading/translation
+├── model-library-notes.md    # Agent finds this when interfacing with the custom library
+├── pyspark-gotchas.md        # Agent finds this for PySpark-specific issues
+├── failed-approaches.md      # Agent finds this when stuck or exploring alternatives
+└── debrief-log.yaml          # Full structured debrief log (append-only)
+```
+
+The `debrief-log.yaml` remains the canonical structured log. Topic-based files are distilled summaries organized for discoverability. Agents browse `docs/context/learnings/` and pick what's relevant based on filenames — they are not told which file to read.
+
+### Cross-Project Knowledge Transfer
+
+Learnings that are not specific to a single client project (e.g., "the custom model library requires DataFrames with no null values in the target column") are promoted to a **plugin-level knowledge base**:
+
+```
+one-shot-build/                  # The plugin repo
+├── knowledge/
+│   ├── model-library.md         # Learnings about the in-house modeling library
+│   ├── pyspark-patterns.md      # PySpark patterns that work across projects
+│   └── common-pitfalls.md       # Mistakes that keep recurring across projects
+```
+
+At epic boundaries, the orchestrator reviews debrief entries and identifies learnings that are reusable. These are promoted (via PR to the plugin repo) to `knowledge/`. The `SessionStart` hook includes relevant plugin knowledge in the injected context.
+
+This creates a **flywheel**: each client project makes the harness smarter for the next one.
+
+### Self-Verification CLI Pattern
+
+All enforcement scripts are designed to be callable by the developer agent as pre-checks, not just as post-completion hooks. Before marking a task complete, the developer should run:
+
+```bash
+# Self-check: tests pass?
+pytest tests/ -v
+
+# Self-check: test immutability?
+bash <plugin_root>/hooks/check-test-immutability.sh tdd-baseline
+
+# Self-check: debrief written?
+bash <plugin_root>/hooks/check-debrief.sh <step> <epic>
+```
+
+This shifts enforcement from "gatekeeper catches you after the fact" to "developer verifies itself first" — reducing rejected review cycles and reinforcing Practice #13 (self-review).
+
+### Compaction as Implicit Review
+
+In long agent team sessions, context window compaction forces the model to re-read code. This naturally serves as an additional review pass — the model often catches bugs during re-reading. This is a beneficial side effect of long sessions, not something to fight. The harness should not aggressively prevent compaction; it provides a free review opportunity.
 
 ### Enforcement
 
 The `TaskCompleted` hook verifies that a debrief entry exists for the step being completed. No debrief = task cannot be marked done.
 
-## Consolidated Practices (27 Total)
+## Consolidated Practices (31 Total)
 
 | # | Practice | Enforcement |
 |---|---|---|
@@ -415,6 +468,10 @@ The `TaskCompleted` hook verifies that a debrief entry exists for the step being
 | 25 | Per-project config overrides (`.harnessrc`) | Plugin reads project-local config |
 | 26 | Rate limiting | Orchestrator monitoring logic |
 | 27 | Agent debrief protocol | `debrief-log.yaml` + `TaskCompleted` hook + session-start injection |
+| 28 | Agent-discoverable documentation | Topic-based learnings files with descriptive names in `docs/context/learnings/` |
+| 29 | Cross-project knowledge transfer | Plugin-level `knowledge/` directory, promoted via PR at epic boundaries |
+| 30 | Self-verification CLI pattern | Enforcement scripts callable by developer as pre-checks, not just post-hooks |
+| 31 | Compaction as implicit review | Long sessions benefit from natural re-read during context compaction |
 
 ## References
 
@@ -424,3 +481,4 @@ The `TaskCompleted` hook verifies that a debrief entry exists for the step being
 - [Claude Code: Agent Teams](https://code.claude.com/docs/en/agent-teams) — Agent team architecture, shared task lists, direct teammate communication
 - [Claude Code: Tasks](https://x.com/trq212/status/2014480496013803643) — Task system for cross-session coordination
 - [Ralph Loop (frankbria/ralph-claude-code)](https://github.com/frankbria/ralph-claude-code) — Circuit breaker, structured status blocks, dual-condition exit gate, stuck loop detection
+- [Peter Steinberger: Shipping at Inference Speed](https://steipete.me/posts/2025/shipping-at-inference-speed) — Agent-discoverable docs, cross-project knowledge, self-verification CLI, compaction as review
