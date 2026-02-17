@@ -40,3 +40,10 @@
 # pruning:
 #   staleness_threshold_days: 90
 #   auto_archive_superseded: true
+
+# Execution environment
+# execution:
+#   mode: autonomous              # autonomous | interactive
+#   skip_permissions: true        # ONLY set to true on isolated VMs
+#   vm_id: ""                    # set by provisioning automation
+#   idle_timeout_minutes: 60     # auto-terminate after idle
