@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One-Shot Build — Kanban Board</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1 id="project-name">One-Shot Build</h1>
+        <div id="summary-bar">
+            <span id="phase-badge" class="badge">Phase: —</span>
+            <span id="epic-badge" class="badge">Epic: —</span>
+            <span id="progress-badge" class="badge">Progress: —</span>
+            <span id="circuit-badge" class="badge">Circuit: CLOSED</span>
+        </div>
+    </header>
+
+    <div id="filters">
+        <label>Epic: <select id="filter-epic"><option value="all">All Epics</option></select></label>
+        <label>Status: <select id="filter-status">
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="blocked">Blocked</option>
+        </select></label>
+        <label>Gate: <select id="filter-gate">
+            <option value="all">All Gates</option>
+            <option value="tests_pending">Tests Pending</option>
+            <option value="review_pending">Review Pending</option>
+            <option value="both_pass">Both Pass</option>
+        </select></label>
+        <label><input type="checkbox" id="show-steps" checked> Show Steps</label>
+    </div>
+
+    <div id="board">
+        <div class="column" data-status="pending">
+            <h2>Pending</h2>
+            <div class="card-container"></div>
+        </div>
+        <div class="column" data-status="plan">
+            <h2>Planning</h2>
+            <div class="card-container"></div>
+        </div>
+        <div class="column" data-status="in_progress">
+            <h2>Building</h2>
+            <div class="card-container"></div>
+        </div>
+        <div class="column" data-status="review">
+            <h2>In Review</h2>
+            <div class="card-container"></div>
+        </div>
+        <div class="column" data-status="completed">
+            <h2>Complete</h2>
+            <div class="card-container"></div>
+        </div>
+        <div class="column" data-status="blocked">
+            <h2>Blocked</h2>
+            <div class="card-container"></div>
+        </div>
+    </div>
+
+    <footer>
+        <span id="last-updated">Last updated: —</span>
+        <span id="auto-refresh">Auto-refresh: 5s</span>
+    </footer>
+
+    <script src="node_modules/js-yaml/dist/js-yaml.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

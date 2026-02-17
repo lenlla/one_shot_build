@@ -1,0 +1,557 @@
+/* ==========================================================================
+   One-Shot Build — Kanban Dashboard
+   ========================================================================== */
+
+/* --- CSS Custom Properties (Light Mode) --- */
+:root {
+    --bg-primary: #f5f6fa;
+    --bg-secondary: #ffffff;
+    --bg-header: #1a1a2e;
+    --bg-footer: #1a1a2e;
+    --text-primary: #2d3436;
+    --text-secondary: #636e72;
+    --text-header: #ffffff;
+    --text-muted: #b2bec3;
+    --border-color: #dfe6e9;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+
+    /* Status colors */
+    --color-pending: #b2bec3;
+    --color-pending-bg: #f1f2f6;
+    --color-plan: #a29bfe;
+    --color-plan-bg: #f0efff;
+    --color-in-progress: #74b9ff;
+    --color-in-progress-bg: #e8f4fd;
+    --color-review: #fdcb6e;
+    --color-review-bg: #fef9e7;
+    --color-completed: #00b894;
+    --color-completed-bg: #e6faf5;
+    --color-blocked: #e17055;
+    --color-blocked-bg: #fdecea;
+
+    /* Column width */
+    --column-min: 220px;
+    --column-gap: 16px;
+}
+
+/* --- Dark Mode --- */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-primary: #0d1117;
+        --bg-secondary: #161b22;
+        --bg-header: #010409;
+        --bg-footer: #010409;
+        --text-primary: #e6edf3;
+        --text-secondary: #8b949e;
+        --text-header: #e6edf3;
+        --text-muted: #484f58;
+        --border-color: #30363d;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+        --color-pending-bg: #1c1e26;
+        --color-plan-bg: #1e1a33;
+        --color-in-progress-bg: #12263a;
+        --color-review-bg: #2a2517;
+        --color-completed-bg: #0d2b22;
+        --color-blocked-bg: #2d1518;
+    }
+}
+
+/* --- Reset & Base --- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
+header {
+    background: var(--bg-header);
+    color: var(--text-header);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: var(--shadow-md);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+header h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+}
+
+/* --- Summary Bar / Badges --- */
+#summary-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-header);
+    white-space: nowrap;
+    transition: background 0.2s ease;
+}
+
+.badge.phase-gather_context { background: var(--color-plan); color: #1a1a2e; }
+.badge.phase-define_epics   { background: var(--color-plan); color: #1a1a2e; }
+.badge.phase-build          { background: var(--color-in-progress); color: #1a1a2e; }
+.badge.phase-complete       { background: var(--color-completed); color: #fff; }
+
+.badge.circuit-CLOSED { background: var(--color-completed); color: #fff; }
+.badge.circuit-OPEN   { background: var(--color-blocked); color: #fff; }
+
+/* ==========================================================================
+   Filters
+   ========================================================================== */
+#filters {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 24px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+#filters label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+#filters select {
+    padding: 5px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+
+#filters select:hover,
+#filters select:focus {
+    border-color: var(--color-in-progress);
+    outline: none;
+}
+
+#filters input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-in-progress);
+    cursor: pointer;
+}
+
+/* ==========================================================================
+   Board — 6-Column Kanban Grid
+   ========================================================================== */
+#board {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--column-gap);
+    padding: 20px 24px;
+    flex: 1;
+    overflow-x: auto;
+    min-height: 0;
+}
+
+/* Responsive: collapse columns on smaller viewports */
+@media (max-width: 1400px) {
+    #board {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    #board {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    #board {
+        grid-template-columns: 1fr;
+    }
+
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    #filters {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* ==========================================================================
+   Columns
+   ========================================================================== */
+.column {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    min-width: var(--column-min);
+    max-height: calc(100vh - 220px);
+    overflow: hidden;
+}
+
+.column h2 {
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 2px solid transparent;
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    z-index: 1;
+}
+
+.column[data-status="pending"] h2    { border-color: var(--color-pending); color: var(--color-pending); }
+.column[data-status="plan"] h2       { border-color: var(--color-plan); color: var(--color-plan); }
+.column[data-status="in_progress"] h2 { border-color: var(--color-in-progress); color: var(--color-in-progress); }
+.column[data-status="review"] h2     { border-color: var(--color-review); color: var(--color-review); }
+.column[data-status="completed"] h2  { border-color: var(--color-completed); color: var(--color-completed); }
+.column[data-status="blocked"] h2    { border-color: var(--color-blocked); color: var(--color-blocked); }
+
+.card-container {
+    padding: 8px 10px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Scrollbar styling */
+.card-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.card-container::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+/* ==========================================================================
+   Epic Cards
+   ========================================================================== */
+.epic-card {
+    border-radius: var(--radius-sm);
+    border-left: 4px solid var(--color-pending);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+    overflow: hidden;
+}
+
+.epic-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+/* Color-coded left borders by status */
+.epic-card.status-pending     { border-left-color: var(--color-pending); }
+.epic-card.status-plan        { border-left-color: var(--color-plan); }
+.epic-card.status-in_progress { border-left-color: var(--color-in-progress); }
+.epic-card.status-review      { border-left-color: var(--color-review); }
+.epic-card.status-completed   { border-left-color: var(--color-completed); }
+.epic-card.status-blocked     { border-left-color: var(--color-blocked); }
+
+.epic-card-header {
+    padding: 12px 14px 8px;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.epic-card-header:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+@media (prefers-color-scheme: dark) {
+    .epic-card-header:hover {
+        background: rgba(255, 255, 255, 0.02);
+    }
+}
+
+.epic-card-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.epic-card-title .expand-icon {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.epic-card.expanded .expand-icon {
+    transform: rotate(90deg);
+}
+
+.epic-card-meta {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.meta-tag {
+    font-size: 0.7rem;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-weight: 500;
+}
+
+.meta-tag.tag-status {
+    color: #fff;
+}
+
+.meta-tag.tag-status.pending     { background: var(--color-pending); color: var(--text-primary); }
+.meta-tag.tag-status.plan        { background: var(--color-plan); color: #1a1a2e; }
+.meta-tag.tag-status.in_progress { background: var(--color-in-progress); color: #1a1a2e; }
+.meta-tag.tag-status.review      { background: var(--color-review); color: #1a1a2e; }
+.meta-tag.tag-status.completed   { background: var(--color-completed); }
+.meta-tag.tag-status.blocked     { background: var(--color-blocked); }
+
+.meta-tag.tag-steps {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.meta-tag.tag-gate {
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.meta-tag.tag-gate.gate-pass {
+    border-color: var(--color-completed);
+    color: var(--color-completed);
+}
+
+.meta-tag.tag-gate.gate-fail {
+    border-color: var(--color-blocked);
+    color: var(--color-blocked);
+}
+
+.meta-tag.tag-gate.gate-partial {
+    border-color: var(--color-review);
+    color: var(--color-review);
+}
+
+/* --- Epic progress bar --- */
+.epic-progress {
+    height: 3px;
+    background: var(--border-color);
+    margin: 0 14px 0;
+}
+
+.epic-progress-fill {
+    height: 100%;
+    background: var(--color-completed);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+}
+
+/* ==========================================================================
+   Step Sub-Cards
+   ========================================================================== */
+.step-list {
+    padding: 0 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.epic-card.expanded .step-list {
+    max-height: 600px;
+    padding: 6px 10px 10px;
+}
+
+.step-card {
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    transition: background 0.15s ease;
+}
+
+.step-card.step-pass {
+    background: var(--color-completed-bg);
+    border: 1px solid rgba(0, 184, 148, 0.2);
+}
+
+.step-card.step-fail {
+    background: var(--color-blocked-bg);
+    border: 1px solid rgba(225, 112, 85, 0.2);
+}
+
+.step-card.step-partial {
+    background: var(--color-review-bg);
+    border: 1px solid rgba(253, 203, 110, 0.2);
+}
+
+.step-card.step-pending {
+    background: var(--color-pending-bg);
+    border: 1px solid var(--border-color);
+}
+
+.step-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.step-gates {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.gate-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.gate-dot.pass { background: var(--color-completed); }
+.gate-dot.fail { background: var(--color-blocked); }
+
+.gate-dot[title]::after {
+    content: attr(title);
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+footer {
+    background: var(--bg-footer);
+    color: var(--text-muted);
+    padding: 10px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    border-top: 1px solid var(--border-color);
+}
+
+footer span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+.empty-state {
+    text-align: center;
+    padding: 24px 12px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-style: italic;
+}
+
+/* ==========================================================================
+   Loading / Error States
+   ========================================================================== */
+.loading-indicator {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    grid-column: 1 / -1;
+}
+
+.error-banner {
+    background: var(--color-blocked-bg);
+    color: var(--color-blocked);
+    padding: 10px 24px;
+    font-size: 0.85rem;
+    text-align: center;
+    border-bottom: 1px solid var(--color-blocked);
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.epic-card {
+    animation: fadeIn 0.25s ease forwards;
+}
+
+/* Stagger cards by using animation-delay via inline style in JS */
