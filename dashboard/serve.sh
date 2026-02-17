@@ -15,6 +15,9 @@ SERVE_DIR=$(mktemp -d)
 ln -s "$SCRIPT_DIR"/* "$SERVE_DIR/" 2>/dev/null || true
 ln -s "$PROJECT_ROOT/project-state.yaml" "$SERVE_DIR/project-state.yaml" 2>/dev/null || true
 
+# Cleanup on exit
+trap "rm -rf $SERVE_DIR" EXIT
+
 echo "Kanban Dashboard: http://localhost:${PORT}"
 echo "Project root: $PROJECT_ROOT"
 echo "Press Ctrl+C to stop."
@@ -22,6 +25,3 @@ echo "Press Ctrl+C to stop."
 # Serve with Python's built-in HTTP server
 cd "$SERVE_DIR"
 python3 -m http.server "$PORT" --bind 127.0.0.1
-
-# Cleanup on exit
-trap "rm -rf $SERVE_DIR" EXIT
