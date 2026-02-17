@@ -1,0 +1,60 @@
+# {{PROJECT_NAME}}
+
+## Quick Start
+
+You are working on a client analytics project governed by the one-shot-build harness.
+Run `/status` to see where things stand. Run `/next` to advance.
+
+## Current State
+
+Read `project-state.yaml` for the canonical workflow state.
+Read `claude-progress.txt` for a log of what's been done.
+
+## Workflow
+
+This project follows a phased workflow. You must complete each phase before advancing:
+
+1. **Gather Context** (`/gather-context`) — Profile data, Q&A with analyst
+2. **Define Epics** (`/define-epics`) — Collaboratively break down the project
+3. **Plan Epic** (`/plan-epic`) — TDD planning for each epic
+4. **Build** (`/build`) — Agent team: developer + reviewer
+5. **Submit** (`/submit`) — PR + advance to next epic
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `project-state.yaml` | Workflow state (phase, epic, step) |
+| `claude-progress.txt` | Activity log |
+| `.harnessrc` | Project-specific config overrides |
+| `docs/context/data-profile.md` | Data exploration results |
+| `docs/context/analyst-notes.md` | Analyst Q&A outcomes |
+| `docs/epics/*.yaml` | Epic definitions |
+| `docs/standards/coding-standards.md` | Coding conventions |
+| `docs/standards/definition-of-done.md` | DoD checklist |
+| `docs/standards/review-criteria.md` | What the reviewer checks |
+| `config/project-config.yaml` | Human decisions (mappings, predictors, etc.) |
+
+## Rules
+
+- **One step at a time.** Complete the current step before starting the next.
+- **Tests are immutable during build.** Do not modify test files written during planning.
+- **Commit after every step.** Descriptive messages. Code must be production-quality at every commit.
+- **Self-review before requesting review.** Check your own work first.
+- **Emit structured status blocks** after completing each step (see `docs/standards/status-block-format.md`).
+
+## Anti-Patterns (DO NOT)
+
+- Modify tests to make them pass during build phase
+- Work on multiple steps simultaneously
+- Skip the review loop
+- Refactor working code that isn't part of the current step
+- Continue past completion signals
+- Probe data shapes without validation — use typed boundaries
+
+## Standards
+
+See `docs/standards/` for:
+- `coding-standards.md` — Style, conventions, shared utilities
+- `definition-of-done.md` — What "done" means for each step
+- `review-criteria.md` — What the reviewer checks
