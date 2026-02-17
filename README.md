@@ -23,7 +23,14 @@ This is not a specific model or pipeline. It is the **scaffolding, tooling, docu
 
 This project draws heavily from emerging best practices in "harness engineering" — the discipline of building environments that maximize agent effectiveness:
 
-- [OpenAI: Harness Engineering — Leveraging Codex in an Agent-First World](https://openai.com/index/harness-engineering/) — Core reference on building agent-first development environments. Key lessons: repository knowledge as system of record, progressive disclosure via AGENTS.md, enforcing architecture mechanically, and increasing application legibility for agents.
+- [OpenAI: Harness Engineering](https://openai.com/index/harness-engineering/) — Repository as system of record, progressive disclosure, mechanical enforcement, agent-to-agent review
+- [Anthropic: Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) — Session boot protocol, progress files, feature lists in JSON, two-phase architecture
+- [Phil Schmid: The Importance of Agent Harness in 2026](https://www.philschmid.de/agent-harness-2026) — Lightweight and modular design, context engineering, structured trajectory capture
+- [Claude Code: Agent Teams](https://code.claude.com/docs/en/agent-teams) — Agent team architecture, shared task lists, direct teammate communication
+- [Claude Code: Tasks](https://x.com/trq212/status/2014480496013803643) — Task system for cross-session coordination
+- [Ralph Loop (frankbria/ralph-claude-code)](https://github.com/frankbria/ralph-claude-code) — Circuit breaker, structured status blocks, dual-condition exit gate, stuck loop detection
+- [Peter Steinberger: Shipping at Inference Speed](https://steipete.me/posts/2025/shipping-at-inference-speed) — Agent-discoverable docs, cross-project knowledge, self-verification CLI, compaction as review
+- [Every Inc: Compound Engineering](https://every.to/chain-of-thought/compound-engineering-how-every-codes-with-agents) — Pull-based knowledge retrieval, structured YAML schema with enum validation, category-based solution docs
 - [Ryan Carson on agent-first workflows](https://x.com/ryancarson/status/2023452909883609111)
 - [Rohit on agentic development patterns](https://x.com/rohit4verse/status/2021622526112358663)
 - [Ryan Carson on scaffolding for agents](https://x.com/ryancarson/status/2020931274219594107)
