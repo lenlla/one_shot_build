@@ -1,0 +1,22 @@
+# Definition of Done
+
+A step is "done" when ALL of the following are true:
+
+## Per Step
+- [ ] Tests pass (full test suite, not just new tests)
+- [ ] Lint clean (no warnings or errors)
+- [ ] Test files unmodified since TDD phase
+- [ ] Code committed with descriptive message
+- [ ] Structured status block emitted
+- [ ] Git shows file changes (verified by hook)
+- [ ] Review agent approved
+
+## Per Epic (before PR submission)
+- [ ] All steps marked completed in project-state.yaml
+- [ ] All steps have tests_pass: true AND review_approved: true
+- [ ] claude-progress.txt updated with epic summary
+- [ ] No TODO comments in code
+- [ ] No debug print statements
+- [ ] No unused imports
+- [ ] Shared utilities used (no hand-rolled helpers for common operations)
+- [ ] project-state.yaml is current and committed
