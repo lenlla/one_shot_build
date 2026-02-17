@@ -31,10 +31,10 @@ This project draws heavily from emerging best practices in "harness engineering"
 - [Ralph Loop (frankbria/ralph-claude-code)](https://github.com/frankbria/ralph-claude-code) — Circuit breaker, structured status blocks, dual-condition exit gate, stuck loop detection
 - [Peter Steinberger: Shipping at Inference Speed](https://steipete.me/posts/2025/shipping-at-inference-speed) — Agent-discoverable docs, cross-project knowledge, self-verification CLI, compaction as review
 - [Every Inc: Compound Engineering](https://every.to/chain-of-thought/compound-engineering-how-every-codes-with-agents) — Pull-based knowledge retrieval, structured YAML schema with enum validation, category-based solution docs
-- [Ryan Carson on agent-first workflows](https://x.com/ryancarson/status/2023452909883609111)
-- [Rohit on agentic development patterns](https://x.com/rohit4verse/status/2021622526112358663)
-- [Ryan Carson on scaffolding for agents](https://x.com/ryancarson/status/2020931274219594107)
-- [Khaliq Gant on harness patterns](https://x.com/Khaliqgant/status/2019124627860050109)
+- [Ryan Carson on agent-first workflows](https://x.com/ryancarson/status/2023452909883609111) — Structuring repos so agents can navigate and execute autonomously
+- [Rohit on agentic development patterns](https://x.com/rohit4verse/status/2021622526112358663) — Patterns for agent-driven development with human oversight
+- [Ryan Carson on scaffolding for agents](https://x.com/ryancarson/status/2020931274219594107) — Project scaffolding that maximizes agent effectiveness from first commit
+- [Khaliq Gant on harness patterns](https://x.com/Khaliqgant/status/2019124627860050109) — Practical harness design patterns for production agent workflows
 
 ## Key Principles (Adapted from Harness Engineering)
 
