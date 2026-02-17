@@ -2292,6 +2292,221 @@ git commit -m "docs: update README with plugin installation and usage"
 
 ---
 
+## Epic 13: Agent Debrief Protocol
+
+### Task 13.1: Write failing tests for debrief validation
+
+**Files:**
+- Create: `tests/debrief_test.bats`
+
+**Step 1: Write tests**
+
+```bash
+#!/usr/bin/env bats
+# tests/debrief_test.bats
+
+setup() {
+    load 'node_modules/bats-support/load'
+    load 'node_modules/bats-assert/load'
+
+    TEST_DIR="$(mktemp -d)"
+    export PROJECT_ROOT="$TEST_DIR"
+
+    SCRIPT="${BATS_TEST_DIRNAME}/../hooks/check-debrief.sh"
+
+    mkdir -p "$TEST_DIR/docs/context"
+}
+
+teardown() {
+    rm -rf "$TEST_DIR"
+}
+
+@test "fails when no debrief log exists" {
+    run bash "$SCRIPT" "step-01" "01-data-loading"
+    assert_failure
+    assert_output --partial "No debrief entry"
+}
+
+@test "fails when debrief log exists but has no entry for the step" {
+    cat > "$TEST_DIR/docs/context/debrief-log.yaml" <<'YAML'
+- step: "step-02"
+  epic: "01-data-loading"
+  agent: "developer"
+  what_worked:
+    - "Something worked"
+YAML
+    run bash "$SCRIPT" "step-01" "01-data-loading"
+    assert_failure
+    assert_output --partial "No debrief entry"
+}
+
+@test "passes when debrief entry exists for the step" {
+    cat > "$TEST_DIR/docs/context/debrief-log.yaml" <<'YAML'
+- step: "step-01"
+  epic: "01-data-loading"
+  agent: "developer"
+  what_worked:
+    - "Data loaded successfully"
+  discoveries:
+    - "File has 5000 rows"
+YAML
+    run bash "$SCRIPT" "step-01" "01-data-loading"
+    assert_success
+    assert_output --partial "PASS"
+}
+```
+
+**Step 2: Run tests to verify they fail**
+
+Run: `npx bats tests/debrief_test.bats`
+Expected: FAIL
+
+**Step 3: Commit**
+
+```bash
+git add tests/debrief_test.bats
+git commit -m "test: add failing tests for debrief validation"
+```
+
+### Task 13.2: Implement debrief check script
+
+**Files:**
+- Create: `hooks/check-debrief.sh`
+
+**Step 1: Write the script**
+
+```bash
+#!/usr/bin/env bash
+# hooks/check-debrief.sh
+# Validates that a debrief entry exists for a given step.
+# Usage: check-debrief.sh <step-name> <epic-name>
+# Exit 0 = PASS, Exit 1 = FAIL
+
+set -euo pipefail
+
+STEP="${1:?Usage: check-debrief.sh <step-name> <epic-name>}"
+EPIC="${2:?Usage: check-debrief.sh <step-name> <epic-name>}"
+
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
+DEBRIEF_FILE="${PROJECT_ROOT}/docs/context/debrief-log.yaml"
+
+if [[ ! -f "$DEBRIEF_FILE" ]]; then
+    echo "FAIL: No debrief entry found for ${STEP} (${EPIC})"
+    echo "  debrief-log.yaml does not exist."
+    echo "  The developer must write a debrief before marking the step complete."
+    exit 1
+fi
+
+# Check if there's an entry matching both step and epic
+if command -v yq &>/dev/null; then
+    match=$(yq eval "[.[] | select(.step == \"${STEP}\" and .epic == \"${EPIC}\")] | length" "$DEBRIEF_FILE" 2>/dev/null || echo "0")
+else
+    # Fallback: grep-based check
+    match=$(grep -c "step: \"${STEP}\"" "$DEBRIEF_FILE" 2>/dev/null || echo "0")
+fi
+
+if [[ "$match" -gt 0 ]]; then
+    echo "PASS: Debrief entry found for ${STEP} (${EPIC})"
+    exit 0
+else
+    echo "FAIL: No debrief entry found for ${STEP} (${EPIC})"
+    echo "  The developer must write a debrief before marking the step complete."
+    echo ""
+    echo "  Required debrief fields: what_worked, what_failed, discoveries, decisions"
+    exit 1
+fi
+```
+
+**Step 2: Make executable**
+
+```bash
+chmod +x hooks/check-debrief.sh
+```
+
+**Step 3: Run tests to verify they pass**
+
+Run: `npx bats tests/debrief_test.bats`
+Expected: All tests PASS
+
+**Step 4: Commit**
+
+```bash
+git add hooks/check-debrief.sh
+git commit -m "feat: implement debrief validation enforcement script"
+```
+
+### Task 13.3: Update session-start hook to inject learnings
+
+**Files:**
+- Modify: `hooks/session-start.sh`
+
+**Step 1: Add debrief summary injection**
+
+After the existing state context building, add logic to read the last 5 debrief entries from `docs/context/debrief-log.yaml` and include a summary in the injected context.
+
+Add these lines after the phase-based next-action section:
+
+```bash
+# Include recent learnings from debrief log
+DEBRIEF_FILE="${PROJECT_ROOT}/docs/context/debrief-log.yaml"
+if [[ -f "$DEBRIEF_FILE" ]] && command -v yq &>/dev/null; then
+    recent_discoveries=$(yq eval '[.[-5:][].discoveries // []] | flatten | .[]' "$DEBRIEF_FILE" 2>/dev/null | head -10 || echo "")
+    if [[ -n "$recent_discoveries" ]]; then
+        context+="\\n\\n## Recent Learnings\\n"
+        while IFS= read -r discovery; do
+            context+="- ${discovery}\\n"
+        done <<< "$recent_discoveries"
+    fi
+fi
+```
+
+**Step 2: Run session-start tests to verify no regression**
+
+Run: `npx bats tests/session_start_test.bats`
+Expected: All tests PASS
+
+**Step 3: Commit**
+
+```bash
+git add hooks/session-start.sh
+git commit -m "feat: inject recent debrief learnings into session-start context"
+```
+
+### Task 13.4: Update build-step skill to require debriefs
+
+**Files:**
+- Modify: `skills/build-step/SKILL.md`
+
+**Step 1: Add debrief instructions to developer and reviewer prompts**
+
+In the developer teammate instructions section, add:
+
+```
+- After completing each step, write a debrief entry to docs/context/debrief-log.yaml:
+  - what_worked: approaches that succeeded
+  - what_failed: approaches tried and why they didn't work
+  - discoveries: facts learned about the data, APIs, or system
+  - decisions: choices made and their reasoning
+- The TaskCompleted hook will block completion if no debrief entry exists
+```
+
+In the reviewer teammate instructions section, add:
+
+```
+- After reviewing, append your own debrief entry with:
+  - review_notes: what you found during review
+  - patterns_to_watch: recurring issues to watch for in future steps
+```
+
+**Step 2: Commit**
+
+```bash
+git add skills/build-step/SKILL.md
+git commit -m "feat: add debrief requirement to build-step skill"
+```
+
+---
+
 ## Summary
 
 | Epic | Tasks | Description |
@@ -2308,5 +2523,6 @@ git commit -m "docs: update README with plugin installation and usage"
 | 10 | 10.1-10.2 | Quality scan script + skill |
 | 11 | 11.1-11.2 | Remaining commands (/next, review-step) |
 | 12 | 12.1-12.4 | Integration, cleanup, test run, README |
+| 13 | 13.1-13.4 | Agent debrief protocol with tests (TDD) |
 
-**Total: 12 epics, 25 tasks**
+**Total: 13 epics, 29 tasks**

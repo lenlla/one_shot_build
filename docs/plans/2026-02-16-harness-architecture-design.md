@@ -328,7 +328,63 @@ When automated recovery fails:
 - Epic can't be submitted until all steps are `completed` or explicitly `skipped` by human
 - No partial PRs
 
-## Consolidated Practices (26 Total)
+## Agent Debrief Protocol
+
+Learnings from each agent must be captured and propagated to prevent knowledge loss across agent boundaries and sessions.
+
+### Debrief Log (`docs/context/debrief-log.yaml`)
+
+After every step, both the developer and reviewer agents append a structured entry:
+
+```yaml
+- step: "step-03-type-casting"
+  epic: "02-data-translation"
+  agent: "developer"
+  timestamp: "2026-02-16T14:30:00Z"
+
+  what_worked:
+    - "Using .cast() with StringType() before joining avoided mixed-type errors"
+
+  what_failed:
+    - approach: "Direct integer cast on column 'zip_code'"
+      why: "Some zip codes have leading zeros — must stay as strings"
+
+  discoveries:
+    - "Column 'region' has 47 unique values, not 50 — 3 states missing from source data"
+
+  decisions:
+    - "Used left join instead of inner join to preserve rows with missing region mapping"
+      reason: "Analyst notes say missing regions should be flagged, not dropped"
+```
+
+Reviewer entries capture review-specific insights:
+
+```yaml
+- step: "step-03-type-casting"
+  agent: "reviewer"
+  timestamp: "2026-02-16T14:45:00Z"
+
+  review_notes:
+    - "Developer initially missed null handling in cast — caught on first review round"
+
+  patterns_to_watch:
+    - "This codebase tends to skip null checks after joins — always verify"
+```
+
+### How Learnings Propagate
+
+| Mechanism | Scope | When |
+|---|---|---|
+| Agent team messaging | Within current session | Real-time during build/review |
+| `debrief-log.yaml` | Across sessions | Read by `SessionStart` hook, injected as context |
+| Orchestrator spawn prompts | Into new teammates | Relevant prior debriefs included when spawning developer/reviewer |
+| `CLAUDE.md` distillation | Permanent project knowledge | At epic boundaries, orchestrator distills recurring learnings into CLAUDE.md |
+
+### Enforcement
+
+The `TaskCompleted` hook verifies that a debrief entry exists for the step being completed. No debrief = task cannot be marked done.
+
+## Consolidated Practices (27 Total)
 
 | # | Practice | Enforcement |
 |---|---|---|
@@ -358,6 +414,7 @@ When automated recovery fails:
 | 24 | Separated prompt architecture | Epic spec + task list + coding standards |
 | 25 | Per-project config overrides (`.harnessrc`) | Plugin reads project-local config |
 | 26 | Rate limiting | Orchestrator monitoring logic |
+| 27 | Agent debrief protocol | `debrief-log.yaml` + `TaskCompleted` hook + session-start injection |
 
 ## References
 
