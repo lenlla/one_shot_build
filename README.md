@@ -100,7 +100,7 @@ claude plugins install <path-to-this-repo>
 
 | Component | Description |
 |-----------|-------------|
-| **State library** | Read/write `project-state.yaml` with BATS tests |
+| **State library** | Bash helpers to read/write `project-state.yaml` |
 | **Phase skills** | gather-context, define-epics, plan-epic, build-step, submit-epic |
 | **Enforcement scripts** | Test immutability, definition-of-done, solution doc validation |
 | **Self-check CLI** | Pre-completion verification (tests, immutability, docs, git status) |
