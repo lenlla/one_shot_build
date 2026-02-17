@@ -35,3 +35,8 @@
 
 # Path to the shared team knowledge repository
 # shared_knowledge_path: "~/repos/team-knowledge"
+
+# Knowledge pruning configuration
+# pruning:
+#   staleness_threshold_days: 90
+#   auto_archive_superseded: true

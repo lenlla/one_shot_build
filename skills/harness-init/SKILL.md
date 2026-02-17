@@ -41,11 +41,17 @@ Scaffold a new client analytics project with the one-shot-build harness structur
 └── docs/
     └── solutions/                    # Per-project solution docs (compound learning)
         ├── data-quality-issues/
+        │   └── _archived/
         ├── model-library-issues/
+        │   └── _archived/
         ├── pyspark-issues/
+        │   └── _archived/
         ├── performance-issues/
+        │   └── _archived/
         ├── integration-issues/
+        │   └── _archived/
         ├── best-practices/
+        │   └── _archived/
         └── patterns/
             └── critical-patterns.md  # Always-read required knowledge
 ```
