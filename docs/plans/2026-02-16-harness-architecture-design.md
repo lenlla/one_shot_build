@@ -19,6 +19,8 @@ This is NOT a data pipeline framework. The team already has a DAG-based executio
 - **Pipeline:** A chain of many analytical steps, not a single model
 - **Existing infrastructure:** DAG-based execution pipeline already built
 - **Transportability:** The harness must work across any client project, not just one repo
+- **Execution environment:** Isolated VM with `dangerouslySkipPermissions` mode for fully autonomous operation
+- **Databricks integration:** MCP server for remote code execution on Databricks clusters
 
 ## Architecture: Plugin + Project Split
 
@@ -40,7 +42,8 @@ one-shot-build/                        # Claude Code plugin
 │   ├── submit-epic/SKILL.md           # Phase 4: PR + advance state
 │   ├── quality-scan/SKILL.md          # Background quality/deviation scan
 │   ├── harness-status/SKILL.md        # Check workflow state, show next action
-│   └── prune-knowledge/SKILL.md      # Periodic knowledge base cleanup and archival
+│   ├── prune-knowledge/SKILL.md      # Periodic knowledge base cleanup and archival
+│   └── run-on-databricks/SKILL.md    # When/how to use Databricks vs local PySpark
 ├── hooks/
 │   ├── hooks.json                     # Hook config (SessionStart, TaskCompleted, TeammateIdle)
 │   ├── session-start.sh               # Read state file, sync tasks, show current phase
@@ -53,7 +56,8 @@ one-shot-build/                        # Claude Code plugin
 │   ├── init.md                        # /init shorthand
 │   ├── status.md                      # /status shorthand
 │   ├── next.md                        # /next — advance to next step
-│   └── prune-knowledge.md             # /prune-knowledge — clean up stale solution docs
+│   ├── prune-knowledge.md             # /prune-knowledge — clean up stale solution docs
+│   └── board.md                       # /board — launch Kanban dashboard
 ├── agents/
 │   ├── reviewer.md                    # Review agent: separate prompt, critical evaluation
 │   ├── profiler.md                    # Data profiling agent for context gathering
@@ -65,6 +69,16 @@ one-shot-build/                        # Claude Code plugin
 │   ├── review-criteria.md.template
 │   ├── coding-standards.md.template
 │   └── .harnessrc.template
+├── mcp/
+│   └── databricks-executor/
+│       ├── server.py                  # MCP server for Databricks operations
+│       ├── requirements.txt
+│       └── README.md
+├── dashboard/
+│   ├── index.html                    # Kanban board single-page app
+│   ├── style.css
+│   ├── app.js                        # YAML parsing + board rendering
+│   └── serve.sh                      # Local server launcher
 └── lib/
     ├── state.sh                       # Utilities for reading/updating project-state.yaml
     └── solution-schema.yaml           # Valid enum values for solution doc frontmatter
@@ -573,7 +587,167 @@ docs/solutions/
 │       └── 2026-02-20-null-target-workaround.md # superseded by 2026-03-10 version
 ```
 
-## Consolidated Practices (34 Total)
+## Execution Environment: Isolated VM
+
+The harness is designed for fully autonomous operation. Claude Code runs with `--dangerously-skip-permissions` so the agent can execute code, run tests, commit, and create PRs without manual approval gates slowing the feedback loop.
+
+**This requires an isolated VM** — not a developer's local machine. The VM provides:
+
+- **Sandboxing:** Agent can't accidentally modify production systems, shared drives, or other projects
+- **Reproducibility:** Clean environment for each project run (Docker + Databricks connectivity)
+- **Safety:** `dangerouslySkipPermissions` is acceptable because the blast radius is limited to the VM
+- **Cost control:** VM can be spun up/down per project engagement
+
+### VM Requirements
+
+| Component | Requirement |
+|---|---|
+| OS | Linux (Ubuntu 22.04+ recommended) |
+| Docker | For local PySpark development container |
+| Claude Code | Latest version with `--dangerously-skip-permissions` flag |
+| Network | Outbound access to Databricks workspace, GitHub, Anthropic API |
+| Git | Configured with deploy key for project repos |
+| Databricks CLI | Authenticated to the team's workspace |
+| Python | 3.10+ with project dependencies |
+
+### Configuration
+
+```yaml
+# .harnessrc
+execution:
+  mode: autonomous                    # autonomous | interactive
+  skip_permissions: true              # only valid on isolated VMs
+  vm_id: ""                          # set by infrastructure provisioning
+```
+
+### Infrastructure Setup (TODO)
+
+> **Note:** VM provisioning infrastructure is out of scope for the plugin itself, but must be built alongside it. Key decisions:
+> - Cloud provider and VM sizing (on-demand vs. spot)
+> - Provisioning automation (Terraform, Pulumi, or cloud-native)
+> - Pre-baked VM image with all dependencies
+> - Secure credential injection (Databricks token, GitHub deploy key, Anthropic API key)
+> - VM lifecycle management (auto-shutdown after idle timeout)
+> - Log collection and monitoring
+
+## Databricks Integration: MCP Server + Skill
+
+The agent needs to execute PySpark code on Databricks for scaled data processing. An MCP server wraps the Databricks REST API, and a skill teaches the agent when and how to use it.
+
+### MCP Server: `databricks-executor`
+
+A lightweight MCP server that exposes Databricks operations as tools:
+
+| Tool | Description |
+|---|---|
+| `execute_code` | Run a code snippet on a Databricks cluster (blocking, returns output) |
+| `upload_file` | Upload a local file to DBFS or Unity Catalog volume |
+| `download_file` | Download a file from DBFS to local filesystem |
+| `cluster_status` | Check if the configured cluster is running |
+| `start_cluster` | Start the cluster if it's terminated |
+| `list_tables` | List tables in a schema (for data discovery) |
+
+### Configuration
+
+```yaml
+# .harnessrc
+databricks:
+  workspace_url: "https://adb-xxxx.azuredatabricks.net"
+  cluster_id: "xxxx-xxxxxx-xxxxxxxx"
+  default_catalog: "main"
+  default_schema: "client_xyz"
+  token_env_var: "DATABRICKS_TOKEN"     # read from environment, never stored in config
+```
+
+The MCP server reads config from `.harnessrc` and authenticates via the environment variable.
+
+### Skill: `run-on-databricks`
+
+Teaches the agent when to use local PySpark (small data, fast iteration) vs. Databricks (full dataset, production validation):
+
+- **Local Docker:** Data profiling on samples, unit tests, development iteration
+- **Databricks:** Full-scale data processing, integration tests against real data, production-grade validation
+- The agent should develop locally first, then validate on Databricks before marking a step complete
+
+### Plugin Structure Additions
+
+```
+one-shot-build/
+├── mcp/
+│   └── databricks-executor/
+│       ├── server.py                  # MCP server implementation
+│       ├── requirements.txt
+│       └── README.md
+├── skills/
+│   └── run-on-databricks/SKILL.md    # When and how to use Databricks
+```
+
+## Kanban Dashboard
+
+A local web dashboard that reads `project-state.yaml` and renders a visual Kanban board showing all epics, steps, and their statuses. The human uses this to monitor progress without needing to ask the agent or read YAML files.
+
+### Architecture
+
+A simple static HTML/JS application served locally. No backend needed — it reads `project-state.yaml` directly (via a tiny file-serving script or the browser's File API).
+
+```
+one-shot-build/
+├── dashboard/
+│   ├── index.html                    # Single-page Kanban app
+│   ├── style.css
+│   ├── app.js                        # YAML parsing + board rendering
+│   ├── serve.sh                      # Local server script (python -m http.server)
+│   └── package.json                  # js-yaml dependency for YAML parsing
+```
+
+### Board Layout
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  One-Shot Build — Client XYZ Churn Model                           │
+│  Phase: Build  |  Epic: 02-data-translation  |  Step: step-03      │
+├──────────┬──────────┬──────────┬──────────┬──────────┬─────────────┤
+│ Pending  │ Planning │ Building │ Review   │ Complete │ Blocked     │
+├──────────┼──────────┼──────────┼──────────┼──────────┼─────────────┤
+│ epic-03  │          │ step-03  │          │ epic-01  │             │
+│ epic-04  │          │ type-    │          │ step-01  │             │
+│          │          │ casting  │          │ step-02  │             │
+│          │          │          │          │ col-     │             │
+│          │          │          │          │ rename   │             │
+└──────────┴──────────┴──────────┴──────────┴──────────┴─────────────┘
+
+Filters: [All Epics ▾] [All Statuses ▾] [Show Steps ☑]
+```
+
+### Features
+
+- **Auto-refresh:** Watches `project-state.yaml` for changes (via polling or filesystem events)
+- **Epic-level view:** Shows epics as cards across status columns
+- **Step drill-down:** Click an epic to see its steps as sub-cards
+- **Filters:**
+  - By epic (dropdown)
+  - By status (pending, in_progress, completed, blocked)
+  - By gate (tests_pass, review_approved)
+  - Toggle step visibility
+- **Color coding:**
+  - Green: completed (both gates pass)
+  - Blue: in progress
+  - Yellow: review pending (tests pass, awaiting review)
+  - Red: blocked or circuit breaker OPEN
+  - Gray: pending
+- **Summary bar:** Overall progress percentage, circuit breaker state, current phase
+
+### Launch
+
+```bash
+# From the project root:
+bash <plugin_root>/dashboard/serve.sh
+# Opens http://localhost:8080 in the browser
+```
+
+Or via command: `/board` opens the dashboard.
+
+## Consolidated Practices (37 Total)
 
 | # | Practice | Enforcement |
 |---|---|---|
@@ -611,6 +785,9 @@ docs/solutions/
 | 32 | Version-gated retrieval | Learnings-researcher skips docs with mismatched version constraints or stale `last_validated` dates |
 | 33 | Contradiction-based auto-deprecation | `validate-solution-doc.sh` detects overlapping `component+problem_type+root_cause` and prompts for supersession |
 | 34 | Scheduled knowledge compaction | `/prune-knowledge` skill archives deprecated docs, flags stale docs, surfaces merge candidates |
+| 35 | Isolated VM execution | `dangerouslySkipPermissions` on sandboxed VM only — never on developer machines |
+| 36 | Databricks MCP integration | MCP server for remote code execution, file transfer, cluster management on Databricks |
+| 37 | Visual Kanban dashboard | Local web app reads `project-state.yaml` and renders filterable board with auto-refresh |
 
 ## References
 

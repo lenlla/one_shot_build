@@ -3395,6 +3395,687 @@ git commit -m "feat: add _archived dirs and pruning config to project scaffold"
 
 ---
 
+## Epic 17: Isolated VM Execution Environment
+
+### Task 17.1: Document VM setup requirements
+
+**Files:**
+- Create: `docs/infrastructure/vm-setup.md`
+
+**Step 1: Write the VM setup guide**
+
+```markdown
+# Isolated VM Setup Guide
+
+## Overview
+
+The one-shot-build harness is designed to run on an isolated VM with
+`--dangerously-skip-permissions` mode for fully autonomous operation.
+**Never run in this mode on a developer's local machine.**
+
+## Prerequisites
+
+| Component | Version | Purpose |
+|-----------|---------|---------|
+| Ubuntu | 22.04+ | Base OS |
+| Docker | 24+ | Local PySpark container |
+| Claude Code | Latest | Agent runtime |
+| Python | 3.10+ | Project dependencies |
+| Git | 2.40+ | Version control |
+| Databricks CLI | Latest | Cluster access |
+| yq | 4.x | YAML processing |
+| Node.js | 18+ | BATS test runner |
+
+## Setup Steps
+
+### 1. Install Claude Code
+```bash
+# Install Claude Code CLI
+npm install -g @anthropic-ai/claude-code
+```
+
+### 2. Configure permissions mode
+```bash
+# Launch with skip permissions (VM ONLY)
+claude --dangerously-skip-permissions
+```
+
+### 3. Install the plugin
+```bash
+claude plugins install <plugin-repo-url>
+```
+
+### 4. Configure credentials
+Set environment variables (never store in files):
+```bash
+export ANTHROPIC_API_KEY="..."
+export DATABRICKS_TOKEN="..."
+export GITHUB_TOKEN="..."
+```
+
+### 5. Verify Docker
+```bash
+docker run --rm pyspark-dev:latest spark-submit --version
+```
+
+### 6. Verify Databricks connectivity
+```bash
+databricks clusters get --cluster-id <id>
+```
+
+## Security Considerations
+
+- VM should have no access to production databases or systems
+- Network egress should be limited to: Anthropic API, GitHub, Databricks workspace
+- Credentials should be injected via secrets manager, not baked into the VM image
+- VM should auto-terminate after configurable idle timeout
+- All agent activity is logged to `claude-progress.txt` and git history for auditability
+```
+
+**Step 2: Commit**
+
+```bash
+git add docs/infrastructure/vm-setup.md
+git commit -m "docs: add isolated VM setup guide for autonomous execution"
+```
+
+### Task 17.2: Update .harnessrc template with execution config
+
+**Files:**
+- Modify: `templates/.harnessrc.template`
+
+**Step 1: Add execution environment section**
+
+```yaml
+# Execution environment
+# execution:
+#   mode: autonomous              # autonomous | interactive
+#   skip_permissions: true        # ONLY set to true on isolated VMs
+#   vm_id: ""                    # set by provisioning automation
+#   idle_timeout_minutes: 60     # auto-terminate after idle
+```
+
+**Step 2: Commit**
+
+```bash
+git add templates/.harnessrc.template
+git commit -m "feat: add execution environment config to .harnessrc template"
+```
+
+### Task 17.3: Update session-start hook to warn if not on VM
+
+**Files:**
+- Modify: `hooks/session-start.sh`
+
+**Step 1: Add environment check**
+
+At the top of the session-start hook, after reading `.harnessrc`, check if `execution.skip_permissions` is `true` but no `vm_id` is set:
+
+```bash
+# Warn if dangerous mode detected without VM isolation
+if [[ -f "$PROJECT_ROOT/.harnessrc" ]] && command -v yq &>/dev/null; then
+    skip_perms=$(yq eval ".execution.skip_permissions" "$PROJECT_ROOT/.harnessrc" 2>/dev/null)
+    vm_id=$(yq eval ".execution.vm_id" "$PROJECT_ROOT/.harnessrc" 2>/dev/null)
+    if [[ "$skip_perms" == "true" && ( -z "$vm_id" || "$vm_id" == "null" ) ]]; then
+        context+="\\n\\n⚠️ **WARNING:** skip_permissions is enabled but no vm_id is set.\\n"
+        context+="Ensure you are running on an isolated VM, not a developer machine.\\n"
+    fi
+fi
+```
+
+**Step 2: Run tests to verify no regression**
+
+Run: `npx bats tests/session_start_test.bats`
+Expected: All tests PASS
+
+**Step 3: Commit**
+
+```bash
+git add hooks/session-start.sh
+git commit -m "feat: add VM isolation warning to session-start hook"
+```
+
+---
+
+## Epic 18: Databricks MCP Server + Skill
+
+### Task 18.1: Create Databricks MCP server
+
+**Files:**
+- Create: `mcp/databricks-executor/server.py`
+- Create: `mcp/databricks-executor/requirements.txt`
+- Create: `mcp/databricks-executor/README.md`
+
+**Step 1: Write requirements.txt**
+
+```
+mcp>=1.0.0
+databricks-sdk>=0.20.0
+pyyaml>=6.0
+```
+
+**Step 2: Write the MCP server**
+
+```python
+"""
+Databricks Executor MCP Server
+Exposes Databricks operations as MCP tools for the one-shot-build harness.
+Reads configuration from .harnessrc in the current project directory.
+"""
+
+import os
+import yaml
+from pathlib import Path
+from mcp.server import Server
+from mcp.types import Tool, TextContent
+from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.compute import State
+
+app = Server("databricks-executor")
+
+
+def load_config() -> dict:
+    """Load Databricks config from .harnessrc."""
+    harnessrc = Path.cwd() / ".harnessrc"
+    if not harnessrc.exists():
+        raise FileNotFoundError("No .harnessrc found. Run /init first.")
+    with open(harnessrc) as f:
+        config = yaml.safe_load(f)
+    return config.get("databricks", {})
+
+
+def get_client(config: dict) -> WorkspaceClient:
+    """Create authenticated Databricks client."""
+    token_var = config.get("token_env_var", "DATABRICKS_TOKEN")
+    token = os.environ.get(token_var)
+    if not token:
+        raise ValueError(f"Environment variable {token_var} not set")
+    return WorkspaceClient(
+        host=config["workspace_url"],
+        token=token,
+    )
+
+
+@app.tool()
+async def execute_code(code: str, language: str = "python") -> list[TextContent]:
+    """Execute a code snippet on the configured Databricks cluster.
+    Returns the output of the execution."""
+    config = load_config()
+    client = get_client(config)
+    cluster_id = config["cluster_id"]
+
+    # Ensure cluster is running
+    cluster = client.clusters.get(cluster_id)
+    if cluster.state != State.RUNNING:
+        client.clusters.start(cluster_id).result()
+
+    # Execute via command API
+    context = client.command.create(
+        cluster_id=cluster_id,
+        language=language,
+        command=code,
+    ).result()
+
+    output = context.results.data if context.results else "No output"
+    return [TextContent(type="text", text=str(output))]
+
+
+@app.tool()
+async def cluster_status() -> list[TextContent]:
+    """Check the status of the configured Databricks cluster."""
+    config = load_config()
+    client = get_client(config)
+    cluster = client.clusters.get(config["cluster_id"])
+    return [TextContent(
+        type="text",
+        text=f"Cluster: {cluster.cluster_name}\nState: {cluster.state.value}\nID: {config['cluster_id']}",
+    )]
+
+
+@app.tool()
+async def start_cluster() -> list[TextContent]:
+    """Start the configured Databricks cluster if it's terminated."""
+    config = load_config()
+    client = get_client(config)
+    cluster_id = config["cluster_id"]
+    cluster = client.clusters.get(cluster_id)
+
+    if cluster.state == State.RUNNING:
+        return [TextContent(type="text", text="Cluster is already running.")]
+
+    client.clusters.start(cluster_id).result()
+    return [TextContent(type="text", text=f"Cluster {cluster_id} started successfully.")]
+
+
+@app.tool()
+async def upload_file(local_path: str, dbfs_path: str) -> list[TextContent]:
+    """Upload a local file to DBFS."""
+    config = load_config()
+    client = get_client(config)
+    with open(local_path, "rb") as f:
+        client.dbfs.put(dbfs_path, f, overwrite=True)
+    return [TextContent(type="text", text=f"Uploaded {local_path} to {dbfs_path}")]
+
+
+@app.tool()
+async def download_file(dbfs_path: str, local_path: str) -> list[TextContent]:
+    """Download a file from DBFS to local filesystem."""
+    config = load_config()
+    client = get_client(config)
+    with open(local_path, "wb") as f:
+        for chunk in client.dbfs.read(dbfs_path).data:
+            f.write(chunk)
+    return [TextContent(type="text", text=f"Downloaded {dbfs_path} to {local_path}")]
+
+
+@app.tool()
+async def list_tables(catalog: str = "", schema: str = "") -> list[TextContent]:
+    """List tables in a Databricks catalog/schema for data discovery."""
+    config = load_config()
+    client = get_client(config)
+    cat = catalog or config.get("default_catalog", "main")
+    sch = schema or config.get("default_schema", "default")
+    tables = client.tables.list(catalog_name=cat, schema_name=sch)
+    table_list = "\n".join(f"- {t.full_name}" for t in tables)
+    return [TextContent(type="text", text=f"Tables in {cat}.{sch}:\n{table_list}")]
+
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(app.run())
+```
+
+**Step 3: Write README**
+
+```markdown
+# Databricks Executor MCP Server
+
+MCP server that exposes Databricks operations for the one-shot-build harness.
+
+## Tools
+
+| Tool | Description |
+|------|-------------|
+| `execute_code` | Run Python/SQL on a Databricks cluster |
+| `cluster_status` | Check cluster state |
+| `start_cluster` | Start a terminated cluster |
+| `upload_file` | Upload to DBFS |
+| `download_file` | Download from DBFS |
+| `list_tables` | List tables in a catalog/schema |
+
+## Configuration
+
+Set in your project's `.harnessrc`:
+
+```yaml
+databricks:
+  workspace_url: "https://adb-xxxx.azuredatabricks.net"
+  cluster_id: "xxxx-xxxxxx-xxxxxxxx"
+  default_catalog: "main"
+  default_schema: "client_xyz"
+  token_env_var: "DATABRICKS_TOKEN"
+```
+
+## Setup
+
+```bash
+pip install -r requirements.txt
+export DATABRICKS_TOKEN="your-token"
+```
+```
+
+**Step 4: Commit**
+
+```bash
+git add mcp/databricks-executor/
+git commit -m "feat: add Databricks MCP server with execute, upload, cluster tools"
+```
+
+### Task 18.2: Register MCP server in plugin config
+
+**Files:**
+- Modify: `.claude-plugin/plugin.json`
+
+**Step 1: Add MCP server registration**
+
+Add to `plugin.json`:
+
+```json
+{
+  "name": "one-shot-build",
+  "description": "Workflow harness for autonomous client analytics project execution with Claude Code",
+  "version": "0.1.0",
+  "mcpServers": {
+    "databricks-executor": {
+      "command": "python",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/databricks-executor/server.py"],
+      "env": {}
+    }
+  }
+}
+```
+
+**Step 2: Commit**
+
+```bash
+git add .claude-plugin/plugin.json
+git commit -m "feat: register Databricks MCP server in plugin manifest"
+```
+
+### Task 18.3: Create run-on-databricks skill
+
+**Files:**
+- Create: `skills/run-on-databricks/SKILL.md`
+
+**Step 1: Write the skill**
+
+```markdown
+---
+name: run-on-databricks
+description: Use when you need to execute PySpark code on Databricks for full-scale data processing, or when local Docker execution is insufficient (large datasets, production validation, Unity Catalog access).
+---
+
+# Run on Databricks
+
+## Overview
+
+Execute PySpark code on a Databricks cluster for scaled data processing. Use this when local Docker is insufficient.
+
+## When to Use Databricks vs Local Docker
+
+| Scenario | Use |
+|----------|-----|
+| Data profiling on samples (<100MB) | Local Docker |
+| Unit tests with test fixtures | Local Docker |
+| Development iteration (write-test-fix loop) | Local Docker |
+| Full-scale data processing (>1GB) | **Databricks** |
+| Integration tests against real data | **Databricks** |
+| Production validation before PR | **Databricks** |
+| Accessing Unity Catalog tables | **Databricks** |
+| Performance benchmarking | **Databricks** |
+
+## Process
+
+### 1. Check cluster status
+Use the `cluster_status` MCP tool. If terminated, use `start_cluster`.
+
+### 2. Execute code
+Use the `execute_code` MCP tool with your PySpark code.
+
+Important:
+- Set catalog and schema at the start: `spark.sql("USE CATALOG main; USE SCHEMA client_xyz")`
+- Use the same code that runs locally — no Databricks-specific rewrites
+- If the code requires files, upload them first with `upload_file`
+
+### 3. Validate results
+Compare Databricks output against local test expectations.
+If results differ between local and Databricks, this is a bug — investigate.
+
+### 4. Download artifacts
+Use `download_file` to pull any generated artifacts back to the project repo.
+
+## Configuration
+
+Databricks settings are in `.harnessrc` under the `databricks:` key.
+The token is read from the environment variable specified in `token_env_var`.
+
+## Important
+
+- NEVER hardcode tokens or credentials in code or config files
+- Always develop and test locally FIRST, then validate on Databricks
+- Databricks execution is slower and costs money — use it intentionally
+- If a cluster start fails, check with the human before retrying
+```
+
+**Step 2: Commit**
+
+```bash
+git add skills/run-on-databricks/SKILL.md
+git commit -m "feat: add run-on-databricks skill for local vs cluster decision guidance"
+```
+
+### Task 18.4: Update .harnessrc template with Databricks config
+
+**Files:**
+- Modify: `templates/.harnessrc.template`
+
+**Step 1: Add Databricks section**
+
+```yaml
+# Databricks integration
+# databricks:
+#   workspace_url: "https://adb-xxxx.azuredatabricks.net"
+#   cluster_id: "xxxx-xxxxxx-xxxxxxxx"
+#   default_catalog: "main"
+#   default_schema: "client_xyz"
+#   token_env_var: "DATABRICKS_TOKEN"
+```
+
+**Step 2: Commit**
+
+```bash
+git add templates/.harnessrc.template
+git commit -m "feat: add Databricks config section to .harnessrc template"
+```
+
+---
+
+## Epic 19: Kanban Dashboard
+
+### Task 19.1: Create dashboard HTML/CSS/JS
+
+**Files:**
+- Create: `dashboard/index.html`
+- Create: `dashboard/style.css`
+- Create: `dashboard/app.js`
+- Create: `dashboard/package.json`
+
+**Step 1: Write package.json**
+
+```json
+{
+  "name": "one-shot-build-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}
+```
+
+**Step 2: Write index.html**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One-Shot Build — Kanban Board</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1 id="project-name">One-Shot Build</h1>
+        <div id="summary-bar">
+            <span id="phase-badge" class="badge">Phase: —</span>
+            <span id="epic-badge" class="badge">Epic: —</span>
+            <span id="progress-badge" class="badge">Progress: —</span>
+            <span id="circuit-badge" class="badge">Circuit: CLOSED</span>
+        </div>
+    </header>
+
+    <div id="filters">
+        <label>Epic: <select id="filter-epic"><option value="all">All Epics</option></select></label>
+        <label>Status: <select id="filter-status">
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="blocked">Blocked</option>
+        </select></label>
+        <label>Gate: <select id="filter-gate">
+            <option value="all">All Gates</option>
+            <option value="tests_pending">Tests Pending</option>
+            <option value="review_pending">Review Pending</option>
+            <option value="both_pass">Both Pass</option>
+        </select></label>
+        <label><input type="checkbox" id="show-steps" checked> Show Steps</label>
+    </div>
+
+    <div id="board">
+        <div class="column" data-status="pending">
+            <h2>Pending</h2>
+            <div class="card-container"></div>
+        </div>
+        <div class="column" data-status="plan">
+            <h2>Planning</h2>
+            <div class="card-container"></div>
+        </div>
+        <div class="column" data-status="in_progress">
+            <h2>Building</h2>
+            <div class="card-container"></div>
+        </div>
+        <div class="column" data-status="review">
+            <h2>In Review</h2>
+            <div class="card-container"></div>
+        </div>
+        <div class="column" data-status="completed">
+            <h2>Complete</h2>
+            <div class="card-container"></div>
+        </div>
+        <div class="column" data-status="blocked">
+            <h2>Blocked</h2>
+            <div class="card-container"></div>
+        </div>
+    </div>
+
+    <footer>
+        <span id="last-updated">Last updated: —</span>
+        <span id="auto-refresh">Auto-refresh: 5s</span>
+    </footer>
+
+    <script src="node_modules/js-yaml/dist/js-yaml.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+```
+
+**Step 3: Write style.css**
+
+The CSS should implement:
+- A 6-column Kanban layout (flexbox or CSS grid)
+- Card styling with color coding (green=complete, blue=in-progress, yellow=review-pending, red=blocked, gray=pending)
+- Epic cards with expandable step sub-cards
+- Responsive layout
+- Dark/light mode support
+- Badge styling for the summary bar
+- Filter bar styling
+
+**Step 4: Write app.js**
+
+The JavaScript should implement:
+- `loadState(path)` — fetch and parse `project-state.yaml` via the local server
+- `renderBoard(state, filters)` — clear and re-render all cards into columns
+- `createEpicCard(epic)` — render an epic as a card with status, step count, gates
+- `createStepCard(step)` — render a step as a sub-card within an epic
+- `applyFilters()` — read filter dropdowns and re-render
+- `autoRefresh(interval)` — poll for state changes every N seconds
+- `updateSummaryBar(state)` — update header badges from state
+- Filter logic for epic, status, and gate dropdowns
+
+**Step 5: Install dependencies and commit**
+
+```bash
+cd dashboard && npm install && cd ..
+git add dashboard/
+git commit -m "feat: add Kanban dashboard with filtering, auto-refresh, color-coded cards"
+```
+
+### Task 19.2: Create dashboard server script
+
+**Files:**
+- Create: `dashboard/serve.sh`
+
+**Step 1: Write the server script**
+
+```bash
+#!/usr/bin/env bash
+# dashboard/serve.sh
+# Launches a local HTTP server for the Kanban dashboard.
+# Serves both the dashboard files AND the project's state file.
+# Usage: serve.sh [project-root] [port]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+PROJECT_ROOT="${1:-$(pwd)}"
+PORT="${2:-8080}"
+
+# Create a temp directory with symlinks so the server can access both
+SERVE_DIR=$(mktemp -d)
+ln -s "$SCRIPT_DIR"/* "$SERVE_DIR/" 2>/dev/null || true
+ln -s "$PROJECT_ROOT/project-state.yaml" "$SERVE_DIR/project-state.yaml" 2>/dev/null || true
+
+echo "Kanban Dashboard: http://localhost:${PORT}"
+echo "Project root: $PROJECT_ROOT"
+echo "Press Ctrl+C to stop."
+
+# Serve with Python's built-in HTTP server
+cd "$SERVE_DIR"
+python3 -m http.server "$PORT" --bind 127.0.0.1
+
+# Cleanup on exit
+trap "rm -rf $SERVE_DIR" EXIT
+```
+
+**Step 2: Make executable**
+
+```bash
+chmod +x dashboard/serve.sh
+```
+
+**Step 3: Commit**
+
+```bash
+git add dashboard/serve.sh
+git commit -m "feat: add dashboard server script with project state symlink"
+```
+
+### Task 19.3: Create /board command
+
+**Files:**
+- Create: `commands/board.md`
+
+**Step 1: Write the command**
+
+```markdown
+---
+description: "Launch the Kanban dashboard to visualize project progress."
+disable-model-invocation: true
+---
+
+Launch the one-shot-build Kanban dashboard by running:
+
+```bash
+bash <plugin_root>/dashboard/serve.sh $(pwd) 8080
+```
+
+Then open http://localhost:8080 in your browser.
+
+The dashboard reads project-state.yaml and auto-refreshes every 5 seconds.
+Use the filters to view by epic, status, or gate state.
+```
+
+**Step 2: Commit**
+
+```bash
+git add commands/board.md
+git commit -m "feat: add /board command to launch Kanban dashboard"
+```
+
+---
+
 ## Summary
 
 | Epic | Tasks | Description |
@@ -3415,5 +4096,8 @@ git commit -m "feat: add _archived dirs and pruning config to project scaffold"
 | 14 | 14.1-14.5 | Learnings researcher agent (version-gated) + knowledge retrieval + promotion |
 | 15 | 15.1-15.2 | Self-verification CLI + final hook wiring |
 | 16 | 16.1-16.3 | Knowledge pruning — `/prune-knowledge` skill, command, scaffold updates |
+| 17 | 17.1-17.3 | Isolated VM environment — setup guide, config, session-start safety warning |
+| 18 | 18.1-18.4 | Databricks MCP server + skill + plugin registration + config |
+| 19 | 19.1-19.3 | Kanban dashboard — HTML/CSS/JS app, server script, `/board` command |
 
-**Total: 16 epics, 39 tasks**
+**Total: 19 epics, 48 tasks**
