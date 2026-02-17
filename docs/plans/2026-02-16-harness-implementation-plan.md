@@ -2318,6 +2318,14 @@ applies_to:
   data_characteristics: [] # e.g., [large_dataset, sparse_nulls, categorical_heavy]
   tools: []         # e.g., [pyspark, databricks, custom_model_library]
 
+# Lifecycle metadata (for pruning)
+status: active      # active | deprecated | superseded
+superseded_by: ""   # path to replacement doc (if superseded)
+last_validated: {{DATE}}  # last date confirmed still applicable
+context:
+  library_versions: {}  # e.g., { custom_model_library: ">=2.1" }
+  tool_versions: {}     # e.g., { pyspark: ">=3.4" }
+
 tags: []
 ---
 
@@ -2391,6 +2399,11 @@ resolution_type:
 scope:
   - universal
   - conditional
+
+status:
+  - active
+  - deprecated
+  - superseded
 ```
 
 **Step 3: Commit**
@@ -2496,6 +2509,86 @@ EOF
     assert_failure
     assert_output --partial "missing"
 }
+
+@test "fails when status has invalid enum value" {
+    cat > "$TEST_DIR/bad-status.md" <<'EOF'
+---
+title: "Test doc"
+date: 2026-03-10
+problem_type: runtime_error
+component: model_execution
+severity: critical
+root_cause: null_handling
+resolution_type: code_fix
+status: banana
+applies_to:
+  scope: universal
+  project_types: []
+  data_characteristics: []
+  tools: []
+tags: []
+---
+
+## Problem
+Test.
+EOF
+
+    run bash "$SCRIPT" "$TEST_DIR/bad-status.md" "$SCHEMA"
+    assert_failure
+    assert_output --partial "status"
+}
+
+@test "detects contradiction with existing doc (same component+problem_type+root_cause)" {
+    mkdir -p "$TEST_DIR/docs/solutions/model-library-issues"
+    cat > "$TEST_DIR/docs/solutions/model-library-issues/old-doc.md" <<'EOF'
+---
+title: "Old null handling fix"
+date: 2026-02-01
+problem_type: runtime_error
+component: model_execution
+root_cause: null_handling
+severity: high
+resolution_type: workaround
+status: active
+applies_to:
+  scope: universal
+  project_types: []
+  data_characteristics: []
+  tools: []
+tags: []
+---
+
+## Problem
+Old workaround.
+EOF
+
+    cat > "$TEST_DIR/new-doc.md" <<'EOF'
+---
+title: "Better null handling fix"
+date: 2026-03-10
+problem_type: runtime_error
+component: model_execution
+root_cause: null_handling
+severity: critical
+resolution_type: code_fix
+status: active
+applies_to:
+  scope: universal
+  project_types: []
+  data_characteristics: []
+  tools: []
+tags: []
+---
+
+## Problem
+Better fix.
+EOF
+
+    run bash "$SCRIPT" "$TEST_DIR/new-doc.md" "$SCHEMA" "$TEST_DIR/docs/solutions"
+    assert_success
+    # Should pass validation but warn about overlap
+    assert_output --partial "OVERLAP"
+}
 ```
 
 **Step 2: Run tests to verify they fail**
@@ -2521,14 +2614,16 @@ git commit -m "test: add failing tests for solution doc validation"
 #!/usr/bin/env bash
 # hooks/validate-solution-doc.sh
 # Validates a solution document's YAML frontmatter against the schema.
-# Usage: validate-solution-doc.sh <doc-path> [schema-path]
-# Exit 0 = PASS, Exit 1 = FAIL
+# Also checks for contradictions with existing docs (same component+problem_type+root_cause).
+# Usage: validate-solution-doc.sh <doc-path> [schema-path] [solutions-dir]
+# Exit 0 = PASS (may include OVERLAP warnings), Exit 1 = FAIL
 
 set -euo pipefail
 
-DOC_PATH="${1:?Usage: validate-solution-doc.sh <doc-path> [schema-path]}"
+DOC_PATH="${1:?Usage: validate-solution-doc.sh <doc-path> [schema-path] [solutions-dir]}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 SCHEMA_PATH="${2:-${SCRIPT_DIR}/../lib/solution-schema.yaml}"
+SOLUTIONS_DIR="${3:-}"  # Optional: path to docs/solutions/ for contradiction detection
 
 if [[ ! -f "$DOC_PATH" ]]; then
     echo "FAIL: File not found: $DOC_PATH"
@@ -2541,6 +2636,7 @@ if ! command -v yq &>/dev/null; then
 fi
 
 failures=()
+warnings=()
 
 # Extract frontmatter (between --- markers)
 frontmatter=$(sed -n '/^---$/,/^---$/p' "$DOC_PATH" | sed '1d;$d')
@@ -2563,11 +2659,10 @@ for field in "${required_fields[@]}"; do
 done
 
 # Validate enum fields against schema
-enum_fields=("problem_type" "component" "severity" "root_cause" "resolution_type")
+enum_fields=("problem_type" "component" "severity" "root_cause" "resolution_type" "status")
 for field in "${enum_fields[@]}"; do
     val=$(yq eval ".${field}" "$tmp_fm" 2>/dev/null)
     if [[ -n "$val" && "$val" != "null" ]]; then
-        # Check if value is in the schema's allowed list
         match=$(yq eval ".${field}[] | select(. == \"${val}\")" "$SCHEMA_PATH" 2>/dev/null)
         if [[ -z "$match" ]]; then
             failures+=("Invalid ${field}: '${val}' — see lib/solution-schema.yaml for valid values")
@@ -2584,13 +2679,45 @@ if [[ -n "$scope" && "$scope" != "null" ]]; then
     fi
 fi
 
+# --- Contradiction detection ---
+# Check for existing active docs with the same component+problem_type+root_cause
+if [[ -n "$SOLUTIONS_DIR" && -d "$SOLUTIONS_DIR" ]]; then
+    new_component=$(yq eval ".component" "$tmp_fm" 2>/dev/null)
+    new_problem=$(yq eval ".problem_type" "$tmp_fm" 2>/dev/null)
+    new_root=$(yq eval ".root_cause" "$tmp_fm" 2>/dev/null)
+
+    if [[ -n "$new_component" && -n "$new_problem" && -n "$new_root" ]]; then
+        # Search existing docs for matching combination
+        while IFS= read -r existing_doc; do
+            [[ "$existing_doc" == "$DOC_PATH" ]] && continue
+            [[ "$existing_doc" == *"_archived"* ]] && continue
+
+            ex_fm=$(sed -n '/^---$/,/^---$/p' "$existing_doc" | sed '1d;$d')
+            tmp_ex=$(mktemp)
+            echo "$ex_fm" > "$tmp_ex"
+
+            ex_component=$(yq eval ".component" "$tmp_ex" 2>/dev/null)
+            ex_problem=$(yq eval ".problem_type" "$tmp_ex" 2>/dev/null)
+            ex_root=$(yq eval ".root_cause" "$tmp_ex" 2>/dev/null)
+            ex_status=$(yq eval ".status" "$tmp_ex" 2>/dev/null)
+            ex_title=$(yq eval ".title" "$tmp_ex" 2>/dev/null)
+
+            rm -f "$tmp_ex"
+
+            if [[ "$ex_component" == "$new_component" && \
+                  "$ex_problem" == "$new_problem" && \
+                  "$ex_root" == "$new_root" && \
+                  "$ex_status" == "active" ]]; then
+                warnings+=("OVERLAP: Existing active doc covers same component+problem_type+root_cause: ${existing_doc} (\"${ex_title}\"). Consider marking it as superseded.")
+            fi
+        done < <(find "$SOLUTIONS_DIR" -name "*.md" -not -path "*/_archived/*" 2>/dev/null)
+    fi
+fi
+
 rm -f "$tmp_fm"
 
 # Report
-if [[ ${#failures[@]} -eq 0 ]]; then
-    echo "PASS: Solution doc validates against schema: $(basename "$DOC_PATH")"
-    exit 0
-else
+if [[ ${#failures[@]} -gt 0 ]]; then
     echo "FAIL: Solution doc validation failed: $(basename "$DOC_PATH")"
     echo ""
     for fail in "${failures[@]}"; do
@@ -2598,6 +2725,14 @@ else
     done
     exit 1
 fi
+
+# Warnings (non-blocking)
+for warn in "${warnings[@]}"; do
+    echo "  $warn"
+done
+
+echo "PASS: Solution doc validates against schema: $(basename "$DOC_PATH")"
+exit 0
 ```
 
 **Step 2: Make executable**
@@ -2698,9 +2833,21 @@ docs/solutions/patterns/critical-patterns.md          # Project-level
 
 Read `.harnessrc` to get `project_profile` (project_types, data_characteristics, tools, etc.)
 
-### 3. Filter by project profile match
+### 3. Filter by lifecycle status and version compatibility
 
 For each solution doc in both tiers, read only the YAML frontmatter (first ~30 lines).
+
+**Skip immediately if:**
+- `status` is `deprecated` or `superseded`
+- `context.library_versions` or `context.tool_versions` don't match the current project's versions (check against `.harnessrc` project profile)
+
+**Flag as potentially stale if:**
+- `last_validated` is older than 90 days (configurable via `.harnessrc`)
+- Surface these with a warning: "This solution may be outdated (last validated: [date])"
+
+### 4. Filter by project profile match
+
+Within the remaining active, version-compatible docs:
 Include the doc if ANY of these overlap:
 - `applies_to.project_types` overlaps with profile `project_types`
 - `applies_to.data_characteristics` overlaps with profile `data_characteristics`
@@ -2709,18 +2856,18 @@ Include the doc if ANY of these overlap:
 
 Skip docs where NO dimension overlaps.
 
-### 4. Keyword search within filtered set
+### 5. Keyword search within filtered set
 
 Search remaining docs for keywords related to the current task:
 - Epic name, step name, component being built
 - Error messages (if invoked during a failure)
 - Technology names (pyspark, model library, etc.)
 
-### 5. Full read only relevant matches
+### 6. Full read only relevant matches
 
 Read the full content of docs that pass both profile AND keyword filters.
 
-### 6. Return distilled summary
+### 7. Return distilled summary
 
 Return a summary structured as:
 
@@ -3051,6 +3198,203 @@ git commit -m "feat: finalize hooks.json configuration"
 
 ---
 
+## Epic 16: Knowledge Pruning (`/prune-knowledge`)
+
+### Task 16.1: Create prune-knowledge skill
+
+**Files:**
+- Create: `skills/prune-knowledge/SKILL.md`
+
+**Step 1: Write the skill**
+
+```markdown
+---
+name: prune-knowledge
+description: Use periodically to review and clean up solution docs. Identifies stale, deprecated, superseded, and duplicate solutions across both project-level and team-level knowledge stores. Non-destructive — archives rather than deletes.
+---
+
+# Prune Knowledge
+
+## Overview
+
+Review all solution docs for staleness, contradictions, and low-value entries. Surface candidates to the human for review. Archive deprecated docs. This should be run periodically (e.g., at the start of a new project or quarterly).
+
+## Process
+
+### Step 1: Scan both tiers
+
+Read `.harnessrc` for `shared_knowledge_path`. Scan:
+- `docs/solutions/` (project-level)
+- `<shared_knowledge_path>/docs/solutions/` (team-level, if configured)
+
+For each solution doc, extract YAML frontmatter.
+
+### Step 2: Auto-archive superseded docs
+
+Find docs where `status: superseded` and `superseded_by` is filled.
+Move them to `<category>/_archived/` subdirectory.
+
+Report: "Archived N superseded docs."
+
+### Step 3: Flag stale docs
+
+Find active docs where `last_validated` is older than the staleness threshold
+(default: 90 days, configurable via `.harnessrc` under `pruning.staleness_threshold_days`).
+
+Present to the user as a checklist:
+
+```
+## Potentially Stale Solutions (last validated > 90 days ago)
+
+- [ ] **Null handling in target column** (last validated: 2026-01-15)
+      docs/solutions/model-library-issues/2026-01-15-null-target.md
+      Action: [Still valid → refresh date] [Outdated → deprecate] [Skip]
+
+- [ ] **PySpark broadcast join OOM** (last validated: 2025-11-20)
+      docs/solutions/pyspark-issues/2025-11-20-broadcast-oom.md
+      Action: [Still valid → refresh date] [Outdated → deprecate] [Skip]
+```
+
+For each:
+- "Still valid" → update `last_validated` to today
+- "Outdated" → set `status: deprecated`, move to `_archived/`
+- "Skip" → leave as-is for next review
+
+### Step 4: Check version compatibility
+
+Find active docs with `context.library_versions` or `context.tool_versions` constraints.
+Compare against the current project's `.harnessrc` profile.
+
+Flag docs where version constraints are incompatible with the current project:
+
+```
+## Version-Incompatible Solutions
+
+- **PySpark 3.2 shuffle fix** — requires pyspark: ">=3.2, <3.4", current project uses 3.5
+  Action: [Deprecate] [Update version range] [Skip]
+```
+
+### Step 5: Detect duplicates
+
+Find docs with the same `component` + `problem_type` + `root_cause` combination that are both `status: active`.
+
+Present for merge or supersession:
+
+```
+## Duplicate Solutions (same component + problem_type + root_cause)
+
+Group 1: model_execution / runtime_error / null_handling
+  - 2026-01-15-null-target-workaround.md (workaround)
+  - 2026-03-10-null-target-fix.md (code_fix)
+  Action: [Merge into one] [Mark older as superseded] [Keep both] [Skip]
+```
+
+### Step 6: Summary report
+
+```
+## Pruning Summary
+
+- Archived: N superseded docs
+- Refreshed: N docs (last_validated updated)
+- Deprecated: N stale/outdated docs
+- Flagged for review: N version-incompatible docs
+- Duplicate groups found: N
+- Total active docs remaining: N (project) + N (team)
+```
+
+### Step 7: Commit changes
+
+```bash
+git add docs/solutions/
+git commit -m "chore: prune knowledge base — archive N, refresh N, deprecate N"
+```
+
+If team-level docs were modified:
+```bash
+cd <shared_knowledge_path>
+git add docs/solutions/
+git commit -m "chore: prune team knowledge — archive N, refresh N, deprecate N"
+```
+
+## Configuration
+
+```yaml
+# .harnessrc
+pruning:
+  staleness_threshold_days: 90     # flag docs older than this
+  auto_archive_superseded: true    # auto-archive without asking
+```
+```
+
+**Step 2: Commit**
+
+```bash
+git add skills/prune-knowledge/SKILL.md
+git commit -m "feat: add prune-knowledge skill for periodic knowledge base cleanup"
+```
+
+### Task 16.2: Create /prune-knowledge command
+
+**Files:**
+- Create: `commands/prune-knowledge.md`
+
+**Step 1: Write the command**
+
+```markdown
+---
+description: "Review and clean up solution docs. Archives stale/superseded docs, flags duplicates."
+disable-model-invocation: true
+---
+
+Invoke the one-shot-build:prune-knowledge skill and follow it exactly as presented to you
+```
+
+**Step 2: Commit**
+
+```bash
+git add commands/prune-knowledge.md
+git commit -m "feat: add /prune-knowledge command shorthand"
+```
+
+### Task 16.3: Update init skill to scaffold _archived directories
+
+**Files:**
+- Modify: `skills/harness-init/SKILL.md`
+
+**Step 1: Add _archived subdirectories to the solution doc scaffold**
+
+In the "Directory Structure to Create" section, add `_archived/` subdirectories under each solution category:
+
+```
+├── docs/
+│   └── solutions/
+│       ├── data-quality-issues/
+│       │   └── _archived/
+│       ├── model-library-issues/
+│       │   └── _archived/
+│       ...
+```
+
+**Step 2: Add pruning config to .harnessrc template**
+
+In `templates/.harnessrc.template`, add:
+
+```yaml
+# Knowledge pruning configuration
+# pruning:
+#   staleness_threshold_days: 90
+#   auto_archive_superseded: true
+```
+
+**Step 3: Commit**
+
+```bash
+git add skills/harness-init/SKILL.md templates/.harnessrc.template
+git commit -m "feat: add _archived dirs and pruning config to project scaffold"
+```
+
+---
+
 ## Summary
 
 | Epic | Tasks | Description |
@@ -3067,8 +3411,9 @@ git commit -m "feat: finalize hooks.json configuration"
 | 10 | 10.1-10.2 | Quality scan script + skill |
 | 11 | 11.1-11.2 | Remaining commands (/next, review-step) |
 | 12 | 12.1-12.4 | Integration, cleanup, test run, README |
-| 13 | 13.1-13.4 | Compound learning — solution doc schema, validation, scaffolding (TDD) |
-| 14 | 14.1-14.5 | Learnings researcher agent + knowledge retrieval + promotion |
+| 13 | 13.1-13.4 | Compound learning — solution doc schema, validation with contradiction detection, scaffolding (TDD) |
+| 14 | 14.1-14.5 | Learnings researcher agent (version-gated) + knowledge retrieval + promotion |
 | 15 | 15.1-15.2 | Self-verification CLI + final hook wiring |
+| 16 | 16.1-16.3 | Knowledge pruning — `/prune-knowledge` skill, command, scaffold updates |
 
-**Total: 15 epics, 36 tasks**
+**Total: 16 epics, 39 tasks**

@@ -39,7 +39,8 @@ one-shot-build/                        # Claude Code plugin
 │   ├── review-step/SKILL.md           # Phase 3: invoke review agent
 │   ├── submit-epic/SKILL.md           # Phase 4: PR + advance state
 │   ├── quality-scan/SKILL.md          # Background quality/deviation scan
-│   └── harness-status/SKILL.md        # Check workflow state, show next action
+│   ├── harness-status/SKILL.md        # Check workflow state, show next action
+│   └── prune-knowledge/SKILL.md      # Periodic knowledge base cleanup and archival
 ├── hooks/
 │   ├── hooks.json                     # Hook config (SessionStart, TaskCompleted, TeammateIdle)
 │   ├── session-start.sh               # Read state file, sync tasks, show current phase
@@ -51,7 +52,8 @@ one-shot-build/                        # Claude Code plugin
 ├── commands/
 │   ├── init.md                        # /init shorthand
 │   ├── status.md                      # /status shorthand
-│   └── next.md                        # /next — advance to next step
+│   ├── next.md                        # /next — advance to next step
+│   └── prune-knowledge.md             # /prune-knowledge — clean up stale solution docs
 ├── agents/
 │   ├── reviewer.md                    # Review agent: separate prompt, critical evaluation
 │   ├── profiler.md                    # Data profiling agent for context gathering
@@ -409,6 +411,16 @@ applies_to:
   data_characteristics: []         # e.g., [large_dataset, sparse_nulls, categorical_heavy]
   tools: [custom_model_library]    # e.g., [pyspark, databricks, custom_model_library]
 
+# Lifecycle metadata (for pruning)
+status: active                     # active | deprecated | superseded
+superseded_by: ""                  # path to replacement doc (if superseded)
+last_validated: 2026-03-10         # last date this solution was confirmed still applicable
+context:
+  library_versions:                # version constraints — researcher skips if mismatch
+    custom_model_library: ">=2.1"
+  tool_versions:
+    pyspark: ">=3.4"
+
 tags: [null-handling, model-library, target-variable]
 ---
 
@@ -514,7 +526,54 @@ This shifts from "gatekeeper catches you" to "developer checks itself first."
 
 In long agent team sessions, context window compaction forces the model to re-read code. This naturally serves as an additional review pass. The harness should not aggressively prevent compaction; it provides a free review opportunity.
 
-## Consolidated Practices (31 Total)
+### Knowledge Pruning
+
+Solution docs go stale as tooling evolves, libraries update, and better fixes are discovered. Three mechanisms work together to keep the knowledge base current:
+
+**Layer 1: Version-Gated Retrieval**
+
+Solution docs carry version constraints in their frontmatter (`context.library_versions`, `context.tool_versions`). The learnings-researcher checks these against the current project's actual versions at retrieval time:
+
+- **Version mismatch** → skip the doc entirely (don't surface outdated fixes)
+- **`last_validated` older than threshold** (configurable, default: 90 days) → flag as potentially stale, surface with a warning rather than as a confident recommendation
+- **`status: deprecated` or `superseded`** → skip entirely
+
+This means stale docs are silently filtered out without manual cleanup.
+
+**Layer 2: Contradiction-Based Auto-Deprecation**
+
+When a new solution doc is written for the same `component` + `problem_type` + `root_cause` combination as an existing doc:
+
+1. The harness detects the overlap during `validate-solution-doc.sh`
+2. Surfaces the older doc to the developer: "An existing solution covers this same issue. Is the new one a replacement?"
+3. If yes → old doc's `status` is set to `superseded`, `superseded_by` points to the new doc
+4. If no → both remain active (different contexts or complementary solutions)
+
+This handles the common case where fixes evolve over time without requiring a manual sweep.
+
+**Layer 3: Scheduled Compaction Sweep (`/prune-knowledge`)**
+
+A periodically-run skill that reviews all solution docs across both tiers:
+
+| Check | Action |
+|---|---|
+| `status: deprecated` or `superseded` with `superseded_by` filled | Archive (move to `_archived/` subdirectory) |
+| `last_validated` older than threshold | Surface to human: "Still valid?" → refresh date or deprecate |
+| Version constraints that no longer match any active project profile | Flag as potentially obsolete |
+| Duplicate `component` + `problem_type` + `root_cause` combinations | Surface for merge or supersession |
+| Docs never retrieved by the learnings-researcher (if retrieval logging exists) | Flag as low-value candidates for review |
+
+The sweep is non-destructive by default — it archives rather than deletes, and surfaces candidates to the human rather than auto-pruning. Archived docs move to `docs/solutions/_archived/` with a reason tag.
+
+```
+docs/solutions/
+├── data-quality-issues/
+│   ├── 2026-03-10-null-target-crash.md          # active
+│   └── _archived/
+│       └── 2026-02-20-null-target-workaround.md # superseded by 2026-03-10 version
+```
+
+## Consolidated Practices (34 Total)
 
 | # | Practice | Enforcement |
 |---|---|---|
@@ -549,6 +608,9 @@ In long agent team sessions, context window compaction forces the model to re-re
 | 29 | Cross-project knowledge transfer | Two-tier store: per-project `docs/solutions/` + shared `team-knowledge` repo with profile-based relevance matching |
 | 30 | Self-verification CLI pattern | Enforcement scripts callable by developer as pre-checks, not just post-hooks |
 | 31 | Compaction as implicit review | Long sessions benefit from natural re-read during context compaction |
+| 32 | Version-gated retrieval | Learnings-researcher skips docs with mismatched version constraints or stale `last_validated` dates |
+| 33 | Contradiction-based auto-deprecation | `validate-solution-doc.sh` detects overlapping `component+problem_type+root_cause` and prompts for supersession |
+| 34 | Scheduled knowledge compaction | `/prune-knowledge` skill archives deprecated docs, flags stale docs, surfaces merge candidates |
 
 ## References
 
