@@ -47,3 +47,11 @@
 #   skip_permissions: true        # ONLY set to true on isolated VMs
 #   vm_id: ""                    # set by provisioning automation
 #   idle_timeout_minutes: 60     # auto-terminate after idle
+
+# Databricks integration
+# databricks:
+#   workspace_url: "https://adb-xxxx.azuredatabricks.net"
+#   cluster_id: "xxxx-xxxxxx-xxxxxxxx"
+#   default_catalog: "main"
+#   default_schema: "client_xyz"
+#   token_env_var: "DATABRICKS_TOKEN"
