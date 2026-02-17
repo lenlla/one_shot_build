@@ -7,5 +7,12 @@
   },
   "repository": "https://github.com/lenlla/one_shot_build",
   "license": "MIT",
-  "keywords": ["harness", "workflow", "analytics", "agent-teams", "tdd", "review"]
+  "keywords": ["harness", "workflow", "analytics", "agent-teams", "tdd", "review"],
+  "mcpServers": {
+    "databricks-executor": {
+      "command": "python",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/databricks-executor/server.py"],
+      "env": {}
+    }
+  }
 }
