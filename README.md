@@ -38,6 +38,53 @@ This project draws heavily from emerging best practices in "harness engineering"
 5. **Feedback loops** — The agent should be able to validate its own work, detect failures, and self-correct without human intervention for routine issues.
 6. **Humans at the right layer** — Humans define goals, review outputs, and handle judgment calls. The agent handles execution.
 
+## Installation
+
+```bash
+# Install as a Claude Code plugin
+claude plugins install <path-to-this-repo>
+```
+
+### Prerequisites
+- Claude Code (latest)
+- Node.js 18+ (for BATS test runner)
+- yq 4.x (for YAML processing)
+- Python 3.10+ (for client projects)
+
+## Quick Start
+
+```bash
+# 1. Scaffold a new project
+/init
+
+# 2. Check status at any time
+/status
+
+# 3. Advance to the next phase
+/next
+```
+
+## Workflow Commands
+
+| Command | Phase | Description |
+|---------|-------|-------------|
+| `/init` | Setup | Scaffold a new project from templates |
+| `/status` | Any | Show current workflow state and next action |
+| `/next` | Any | Auto-advance to the next workflow phase |
+| `/gather-context` | Phase 1 | Profile data and conduct analyst Q&A |
+| `/define-epics` | Phase 2 | Collaboratively break project into epics |
+| `/plan-epic` | Phase 3 | Create TDD plan, write tests first |
+| `/build` | Phase 4 | Agent team build/review loop |
+| `/submit` | Phase 5 | Run DoD checks, create PR, advance |
+| `/quality-scan` | Any | Run background quality checks |
+| `/board` | Any | Launch Kanban dashboard |
+| `/prune-knowledge` | Any | Clean up solution docs |
+
+## Design Documentation
+
+- Architecture: `docs/plans/2026-02-16-harness-architecture-design.md`
+- Implementation plan: `docs/plans/2026-02-16-harness-implementation-plan.md`
+
 ## Project Status
 
-**Phase: Planning** — Currently building the Product Requirements Document (PRD) for the harness.
+**Phase: Implementation** — Plugin foundation, state library, templates, skills, hooks, enforcement scripts, and agent definitions are built. Compound learning system and Databricks integration in progress.
