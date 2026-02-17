@@ -57,6 +57,8 @@ claude plugins install <path-to-this-repo>
 - Node.js 18+ (for BATS test runner)
 - yq 4.x (for YAML processing)
 - Python 3.10+ (for client projects)
+- Docker 24+ (optional — for local PySpark execution)
+- Databricks CLI (optional — for cluster integration)
 
 ## Quick Start
 
@@ -71,21 +73,38 @@ claude plugins install <path-to-this-repo>
 /next
 ```
 
-## Workflow Commands
+## Workflow
 
-| Command | Phase | Description |
-|---------|-------|-------------|
-| `/init` | Setup | Scaffold a new project from templates |
-| `/status` | Any | Show current workflow state and next action |
-| `/next` | Any | Auto-advance to the next workflow phase |
-| `/gather-context` | Phase 1 | Profile data and conduct analyst Q&A |
-| `/define-epics` | Phase 2 | Collaboratively break project into epics |
-| `/plan-epic` | Phase 3 | Create TDD plan, write tests first |
-| `/build` | Phase 4 | Agent team build/review loop |
-| `/submit` | Phase 5 | Run DoD checks, create PR, advance |
-| `/quality-scan` | Any | Run background quality checks |
-| `/board` | Any | Launch Kanban dashboard |
-| `/prune-knowledge` | Any | Clean up solution docs |
+The harness guides projects through 5 phases. Use `/next` to advance automatically based on the current state, or invoke skills directly.
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/init` | Scaffold a new project from templates |
+| `/status` | Show current workflow state and next action |
+| `/next` | Auto-advance to the next workflow phase |
+| `/board` | Launch Kanban dashboard in browser |
+| `/prune-knowledge` | Review and clean up solution docs |
+
+### Phase Skills (invoked via `/next` or directly)
+
+| Skill | Phase | Description |
+|-------|-------|-------------|
+| `gather-context` | 1 | Profile data and conduct analyst Q&A |
+| `define-epics` | 2 | Collaboratively break project into epics |
+| `plan-epic` | 3 | Create TDD plan, write tests first |
+| `build-step` | 4 | Agent team build/review loop |
+| `submit-epic` | 5 | Run DoD checks, create PR, advance |
+
+### Utility Skills
+
+| Skill | Description |
+|-------|-------------|
+| `quality-scan` | Run background quality checks |
+| `review-step` | Manually invoke review for a completed step |
+| `run-on-databricks` | Execute PySpark on Databricks (vs local Docker) |
+| `prune-knowledge` | Periodic cleanup of stale/superseded solution docs |
 
 ## Plugin Architecture
 
