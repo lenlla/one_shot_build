@@ -2292,127 +2292,310 @@ git commit -m "docs: update README with plugin installation and usage"
 
 ---
 
-## Epic 13: Agent Debrief Protocol
+## Epic 13: Compound Learning System — Solution Docs + Schema
 
-### Task 13.1: Write failing tests for debrief validation
+### Task 13.1: Create solution document schema and templates
 
 **Files:**
-- Create: `tests/debrief_test.bats`
+- Create: `templates/solution-doc.md.template`
+- Create: `lib/solution-schema.yaml`
+
+**Step 1: Write the solution document template**
+
+```markdown
+---
+title: "{{TITLE}}"
+date: {{DATE}}
+problem_type:       # enum: data_quality_issue, runtime_error, performance_issue, config_error, integration_issue, test_failure
+component:          # enum: data_loading, data_translation, model_execution, reporting, pipeline, testing, infrastructure
+severity:           # enum: critical, high, medium, low
+root_cause:         # enum: missing_validation, type_mismatch, memory_overflow, null_handling, config_mismatch, api_misuse, race_condition, schema_drift
+resolution_type:    # enum: code_fix, config_change, workaround, documentation, dependency_update
+
+applies_to:
+  scope:            # universal | conditional
+  project_types: [] # e.g., [churn_modeling, pricing, segmentation]
+  data_characteristics: [] # e.g., [large_dataset, sparse_nulls, categorical_heavy]
+  tools: []         # e.g., [pyspark, databricks, custom_model_library]
+
+tags: []
+---
+
+## Problem
+[What happened]
+
+## Symptoms
+[Observable indicators]
+
+## What Didn't Work
+[Approaches tried and why they failed]
+
+## Solution
+[What fixed it, with code before/after]
+
+## Why This Works
+[Root cause explanation]
+
+## Prevention
+[How to avoid this in future]
+```
+
+**Step 2: Write the schema validation file**
+
+`lib/solution-schema.yaml` defines valid enum values for frontmatter validation:
+
+```yaml
+# lib/solution-schema.yaml — Valid values for solution doc frontmatter
+# Used by validate-solution-doc.sh to enforce schema
+
+problem_type:
+  - data_quality_issue
+  - runtime_error
+  - performance_issue
+  - config_error
+  - integration_issue
+  - test_failure
+
+component:
+  - data_loading
+  - data_translation
+  - model_execution
+  - reporting
+  - pipeline
+  - testing
+  - infrastructure
+
+severity:
+  - critical
+  - high
+  - medium
+  - low
+
+root_cause:
+  - missing_validation
+  - type_mismatch
+  - memory_overflow
+  - null_handling
+  - config_mismatch
+  - api_misuse
+  - race_condition
+  - schema_drift
+
+resolution_type:
+  - code_fix
+  - config_change
+  - workaround
+  - documentation
+  - dependency_update
+
+scope:
+  - universal
+  - conditional
+```
+
+**Step 3: Commit**
+
+```bash
+git add templates/solution-doc.md.template lib/solution-schema.yaml
+git commit -m "feat: add solution document template and schema with enum validation"
+```
+
+### Task 13.2: Write failing tests for solution doc validation
+
+**Files:**
+- Create: `tests/validate_solution_doc_test.bats`
 
 **Step 1: Write tests**
 
 ```bash
 #!/usr/bin/env bats
-# tests/debrief_test.bats
+# tests/validate_solution_doc_test.bats
 
 setup() {
     load 'node_modules/bats-support/load'
     load 'node_modules/bats-assert/load'
 
     TEST_DIR="$(mktemp -d)"
-    export PROJECT_ROOT="$TEST_DIR"
-
-    SCRIPT="${BATS_TEST_DIRNAME}/../hooks/check-debrief.sh"
-
-    mkdir -p "$TEST_DIR/docs/context"
+    SCRIPT="${BATS_TEST_DIRNAME}/../hooks/validate-solution-doc.sh"
+    SCHEMA="${BATS_TEST_DIRNAME}/../lib/solution-schema.yaml"
 }
 
 teardown() {
     rm -rf "$TEST_DIR"
 }
 
-@test "fails when no debrief log exists" {
-    run bash "$SCRIPT" "step-01" "01-data-loading"
-    assert_failure
-    assert_output --partial "No debrief entry"
-}
+@test "passes for a valid solution doc" {
+    cat > "$TEST_DIR/valid-doc.md" <<'EOF'
+---
+title: "Null handling in target column"
+date: 2026-03-10
+problem_type: runtime_error
+component: model_execution
+severity: critical
+root_cause: null_handling
+resolution_type: code_fix
+applies_to:
+  scope: universal
+  project_types: []
+  data_characteristics: []
+  tools: [custom_model_library]
+tags: [null-handling]
+---
 
-@test "fails when debrief log exists but has no entry for the step" {
-    cat > "$TEST_DIR/docs/context/debrief-log.yaml" <<'YAML'
-- step: "step-02"
-  epic: "01-data-loading"
-  agent: "developer"
-  what_worked:
-    - "Something worked"
-YAML
-    run bash "$SCRIPT" "step-01" "01-data-loading"
-    assert_failure
-    assert_output --partial "No debrief entry"
-}
+## Problem
+Model library crashes on null target.
 
-@test "passes when debrief entry exists for the step" {
-    cat > "$TEST_DIR/docs/context/debrief-log.yaml" <<'YAML'
-- step: "step-01"
-  epic: "01-data-loading"
-  agent: "developer"
-  what_worked:
-    - "Data loaded successfully"
-  discoveries:
-    - "File has 5000 rows"
-YAML
-    run bash "$SCRIPT" "step-01" "01-data-loading"
+## Solution
+Add null check before calling library.
+EOF
+
+    run bash "$SCRIPT" "$TEST_DIR/valid-doc.md" "$SCHEMA"
     assert_success
     assert_output --partial "PASS"
+}
+
+@test "fails when problem_type has invalid enum value" {
+    cat > "$TEST_DIR/invalid-doc.md" <<'EOF'
+---
+title: "Test doc"
+date: 2026-03-10
+problem_type: banana
+component: model_execution
+severity: critical
+root_cause: null_handling
+resolution_type: code_fix
+applies_to:
+  scope: universal
+  project_types: []
+  data_characteristics: []
+  tools: []
+tags: []
+---
+
+## Problem
+Test.
+EOF
+
+    run bash "$SCRIPT" "$TEST_DIR/invalid-doc.md" "$SCHEMA"
+    assert_failure
+    assert_output --partial "problem_type"
+}
+
+@test "fails when required frontmatter fields are missing" {
+    cat > "$TEST_DIR/missing-fields.md" <<'EOF'
+---
+title: "Test doc"
+date: 2026-03-10
+---
+
+## Problem
+Test.
+EOF
+
+    run bash "$SCRIPT" "$TEST_DIR/missing-fields.md" "$SCHEMA"
+    assert_failure
+    assert_output --partial "missing"
 }
 ```
 
 **Step 2: Run tests to verify they fail**
 
-Run: `npx bats tests/debrief_test.bats`
-Expected: FAIL
+Run: `npx bats tests/validate_solution_doc_test.bats`
+Expected: FAIL (script does not exist yet)
 
 **Step 3: Commit**
 
 ```bash
-git add tests/debrief_test.bats
-git commit -m "test: add failing tests for debrief validation"
+git add tests/validate_solution_doc_test.bats
+git commit -m "test: add failing tests for solution doc validation"
 ```
 
-### Task 13.2: Implement debrief check script
+### Task 13.3: Implement solution doc validation script
 
 **Files:**
-- Create: `hooks/check-debrief.sh`
+- Create: `hooks/validate-solution-doc.sh`
 
 **Step 1: Write the script**
 
 ```bash
 #!/usr/bin/env bash
-# hooks/check-debrief.sh
-# Validates that a debrief entry exists for a given step.
-# Usage: check-debrief.sh <step-name> <epic-name>
+# hooks/validate-solution-doc.sh
+# Validates a solution document's YAML frontmatter against the schema.
+# Usage: validate-solution-doc.sh <doc-path> [schema-path]
 # Exit 0 = PASS, Exit 1 = FAIL
 
 set -euo pipefail
 
-STEP="${1:?Usage: check-debrief.sh <step-name> <epic-name>}"
-EPIC="${2:?Usage: check-debrief.sh <step-name> <epic-name>}"
+DOC_PATH="${1:?Usage: validate-solution-doc.sh <doc-path> [schema-path]}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+SCHEMA_PATH="${2:-${SCRIPT_DIR}/../lib/solution-schema.yaml}"
 
-PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
-DEBRIEF_FILE="${PROJECT_ROOT}/docs/context/debrief-log.yaml"
-
-if [[ ! -f "$DEBRIEF_FILE" ]]; then
-    echo "FAIL: No debrief entry found for ${STEP} (${EPIC})"
-    echo "  debrief-log.yaml does not exist."
-    echo "  The developer must write a debrief before marking the step complete."
+if [[ ! -f "$DOC_PATH" ]]; then
+    echo "FAIL: File not found: $DOC_PATH"
     exit 1
 fi
 
-# Check if there's an entry matching both step and epic
-if command -v yq &>/dev/null; then
-    match=$(yq eval "[.[] | select(.step == \"${STEP}\" and .epic == \"${EPIC}\")] | length" "$DEBRIEF_FILE" 2>/dev/null || echo "0")
-else
-    # Fallback: grep-based check
-    match=$(grep -c "step: \"${STEP}\"" "$DEBRIEF_FILE" 2>/dev/null || echo "0")
+if ! command -v yq &>/dev/null; then
+    echo "FAIL: yq is required for solution doc validation"
+    exit 1
 fi
 
-if [[ "$match" -gt 0 ]]; then
-    echo "PASS: Debrief entry found for ${STEP} (${EPIC})"
+failures=()
+
+# Extract frontmatter (between --- markers)
+frontmatter=$(sed -n '/^---$/,/^---$/p' "$DOC_PATH" | sed '1d;$d')
+if [[ -z "$frontmatter" ]]; then
+    echo "FAIL: No YAML frontmatter found in $DOC_PATH"
+    exit 1
+fi
+
+# Write frontmatter to temp file for yq parsing
+tmp_fm=$(mktemp)
+echo "$frontmatter" > "$tmp_fm"
+
+# Check required fields
+required_fields=("title" "date" "problem_type" "component" "severity" "root_cause" "resolution_type")
+for field in "${required_fields[@]}"; do
+    val=$(yq eval ".${field}" "$tmp_fm" 2>/dev/null)
+    if [[ -z "$val" || "$val" == "null" ]]; then
+        failures+=("Required field missing: ${field}")
+    fi
+done
+
+# Validate enum fields against schema
+enum_fields=("problem_type" "component" "severity" "root_cause" "resolution_type")
+for field in "${enum_fields[@]}"; do
+    val=$(yq eval ".${field}" "$tmp_fm" 2>/dev/null)
+    if [[ -n "$val" && "$val" != "null" ]]; then
+        # Check if value is in the schema's allowed list
+        match=$(yq eval ".${field}[] | select(. == \"${val}\")" "$SCHEMA_PATH" 2>/dev/null)
+        if [[ -z "$match" ]]; then
+            failures+=("Invalid ${field}: '${val}' — see lib/solution-schema.yaml for valid values")
+        fi
+    fi
+done
+
+# Validate applies_to.scope
+scope=$(yq eval ".applies_to.scope" "$tmp_fm" 2>/dev/null)
+if [[ -n "$scope" && "$scope" != "null" ]]; then
+    match=$(yq eval ".scope[] | select(. == \"${scope}\")" "$SCHEMA_PATH" 2>/dev/null)
+    if [[ -z "$match" ]]; then
+        failures+=("Invalid applies_to.scope: '${scope}' — must be 'universal' or 'conditional'")
+    fi
+fi
+
+rm -f "$tmp_fm"
+
+# Report
+if [[ ${#failures[@]} -eq 0 ]]; then
+    echo "PASS: Solution doc validates against schema: $(basename "$DOC_PATH")"
     exit 0
 else
-    echo "FAIL: No debrief entry found for ${STEP} (${EPIC})"
-    echo "  The developer must write a debrief before marking the step complete."
+    echo "FAIL: Solution doc validation failed: $(basename "$DOC_PATH")"
     echo ""
-    echo "  Required debrief fields: what_worked, what_failed, discoveries, decisions"
+    for fail in "${failures[@]}"; do
+        echo "  - $fail"
+    done
     exit 1
 fi
 ```
@@ -2420,263 +2603,257 @@ fi
 **Step 2: Make executable**
 
 ```bash
-chmod +x hooks/check-debrief.sh
+chmod +x hooks/validate-solution-doc.sh
 ```
 
 **Step 3: Run tests to verify they pass**
 
-Run: `npx bats tests/debrief_test.bats`
+Run: `npx bats tests/validate_solution_doc_test.bats`
 Expected: All tests PASS
 
 **Step 4: Commit**
 
 ```bash
-git add hooks/check-debrief.sh
-git commit -m "feat: implement debrief validation enforcement script"
+git add hooks/validate-solution-doc.sh
+git commit -m "feat: implement solution doc validation against YAML schema"
 ```
 
-### Task 13.3: Update session-start hook to inject learnings
-
-**Files:**
-- Modify: `hooks/session-start.sh`
-
-**Step 1: Add debrief summary injection**
-
-After the existing state context building, add logic to read the last 5 debrief entries from `docs/context/debrief-log.yaml` and include a summary in the injected context.
-
-Add these lines after the phase-based next-action section:
-
-```bash
-# Include recent learnings from debrief log
-DEBRIEF_FILE="${PROJECT_ROOT}/docs/context/debrief-log.yaml"
-if [[ -f "$DEBRIEF_FILE" ]] && command -v yq &>/dev/null; then
-    recent_discoveries=$(yq eval '[.[-5:][].discoveries // []] | flatten | .[]' "$DEBRIEF_FILE" 2>/dev/null | head -10 || echo "")
-    if [[ -n "$recent_discoveries" ]]; then
-        context+="\\n\\n## Recent Learnings\\n"
-        while IFS= read -r discovery; do
-            context+="- ${discovery}\\n"
-        done <<< "$recent_discoveries"
-    fi
-fi
-```
-
-**Step 2: Run session-start tests to verify no regression**
-
-Run: `npx bats tests/session_start_test.bats`
-Expected: All tests PASS
-
-**Step 3: Commit**
-
-```bash
-git add hooks/session-start.sh
-git commit -m "feat: inject recent debrief learnings into session-start context"
-```
-
-### Task 13.4: Update build-step skill to require debriefs
-
-**Files:**
-- Modify: `skills/build-step/SKILL.md`
-
-**Step 1: Add debrief instructions to developer and reviewer prompts**
-
-In the developer teammate instructions section, add:
-
-```
-- After completing each step, write a debrief entry to docs/context/debrief-log.yaml:
-  - what_worked: approaches that succeeded
-  - what_failed: approaches tried and why they didn't work
-  - discoveries: facts learned about the data, APIs, or system
-  - decisions: choices made and their reasoning
-- The TaskCompleted hook will block completion if no debrief entry exists
-```
-
-In the reviewer teammate instructions section, add:
-
-```
-- After reviewing, append your own debrief entry with:
-  - review_notes: what you found during review
-  - patterns_to_watch: recurring issues to watch for in future steps
-```
-
-**Step 2: Commit**
-
-```bash
-git add skills/build-step/SKILL.md
-git commit -m "feat: add debrief requirement to build-step skill"
-```
-
----
-
-## Epic 14: Agent-Discoverable Docs + Cross-Project Knowledge
-
-### Task 14.1: Update init skill to create learnings directory structure
+### Task 13.4: Update init skill to scaffold solution directories
 
 **Files:**
 - Modify: `skills/harness-init/SKILL.md`
 
-**Step 1: Add learnings directory to the scaffold**
+**Step 1: Add solution doc directories to the scaffold**
 
 In the "Directory Structure to Create" section, add:
 
 ```
 ├── docs/
-│   ├── context/
-│   │   └── learnings/         # Topic-based learning files (agent-discoverable)
+│   ├── solutions/                    # Per-project solution docs (compound learning)
+│   │   ├── data-quality-issues/
+│   │   ├── model-library-issues/
+│   │   ├── pyspark-issues/
+│   │   ├── performance-issues/
+│   │   ├── integration-issues/
+│   │   ├── best-practices/
+│   │   └── patterns/
+│   │       └── critical-patterns.md  # Always-read required knowledge
 ```
 
-In the "After Scaffolding" section, add:
+In the "After Scaffolding" section, create a seed `critical-patterns.md`:
 
-Create seed files in `docs/context/learnings/`:
+```markdown
+# Critical Patterns
 
-```bash
-echo "# Data Quirks\n\nLearnings about the client data discovered during this project.\n" > docs/context/learnings/data-quirks.md
-echo "# Model Library Notes\n\nLearnings about the in-house modeling library.\n" > docs/context/learnings/model-library-notes.md
-echo "# PySpark Gotchas\n\nPySpark-specific issues and workarounds.\n" > docs/context/learnings/pyspark-gotchas.md
-echo "# Failed Approaches\n\nApproaches that were tried and why they didn't work.\n" > docs/context/learnings/failed-approaches.md
+> This file is ALWAYS read by the learnings-researcher agent. Add patterns here
+> that every developer/agent must know about for this project.
+
+<!-- Add critical patterns as they are discovered -->
 ```
 
 **Step 2: Commit**
 
 ```bash
 git add skills/harness-init/SKILL.md
-git commit -m "feat: add agent-discoverable learnings directory to init scaffold"
+git commit -m "feat: add solution doc directory structure to init scaffold"
 ```
 
-### Task 14.2: Update debrief protocol to distill into topic files
+---
+
+## Epic 14: Learnings Researcher Agent + Knowledge Retrieval
+
+### Task 14.1: Create learnings-researcher agent definition
+
+**Files:**
+- Create: `agents/learnings-researcher.md`
+
+**Step 1: Write the agent definition**
+
+```markdown
+---
+name: learnings-researcher
+description: |
+  Use this agent to search for relevant prior solutions before planning or building. Searches both per-project docs/solutions/ and the shared team-knowledge repo using a grep-first filtering strategy with project profile matching.
+model: inherit
+---
+
+You are a knowledge researcher for a client analytics project. Your job is to find relevant prior solutions that can prevent known problems and accelerate development.
+
+## When You Are Invoked
+
+- During `/plan-epic` — before the developer writes tests
+- During `/build` — when the developer encounters a problem
+- You are a subagent; return a distilled summary, not raw file contents
+
+## Search Strategy
+
+### 1. ALWAYS read critical patterns (both tiers)
+
+```
+docs/solutions/patterns/critical-patterns.md          # Project-level
+<shared_knowledge_path>/docs/solutions/patterns/critical-patterns.md  # Team-level
+```
+
+### 2. Read the project profile
+
+Read `.harnessrc` to get `project_profile` (project_types, data_characteristics, tools, etc.)
+
+### 3. Filter by project profile match
+
+For each solution doc in both tiers, read only the YAML frontmatter (first ~30 lines).
+Include the doc if ANY of these overlap:
+- `applies_to.project_types` overlaps with profile `project_types`
+- `applies_to.data_characteristics` overlaps with profile `data_characteristics`
+- `applies_to.tools` overlaps with profile `tools`
+- `applies_to.scope` is `universal`
+
+Skip docs where NO dimension overlaps.
+
+### 4. Keyword search within filtered set
+
+Search remaining docs for keywords related to the current task:
+- Epic name, step name, component being built
+- Error messages (if invoked during a failure)
+- Technology names (pyspark, model library, etc.)
+
+### 5. Full read only relevant matches
+
+Read the full content of docs that pass both profile AND keyword filters.
+
+### 6. Return distilled summary
+
+Return a summary structured as:
+
+```
+## Relevant Prior Solutions
+
+### Critical Patterns
+- [pattern 1 from critical-patterns.md]
+- [pattern 2]
+
+### Directly Relevant Solutions
+- **[title]** (from: project/team) — [1-sentence summary of the fix]
+  - Key insight: [what to do differently]
+
+### Possibly Relevant
+- **[title]** — [why it might apply]
+
+### Recommendations
+- [specific action items for the current task based on learnings]
+```
+
+## Important
+
+- Be concise. The developer needs actionable insights, not a research paper.
+- If you find nothing relevant, say so — don't fabricate connections.
+- Prefer solutions from the same component/problem_type as the current task.
+- The shared knowledge path is in `.harnessrc` under `shared_knowledge_path`.
+```
+
+**Step 2: Commit**
+
+```bash
+git add agents/learnings-researcher.md
+git commit -m "feat: add learnings-researcher agent for pull-based knowledge retrieval"
+```
+
+### Task 14.2: Update plan-epic skill to invoke learnings researcher
+
+**Files:**
+- Modify: `skills/plan-epic/SKILL.md`
+
+**Step 1: Add learnings research step**
+
+After "Step 1: Read the epic spec" and before "Step 2: Break into steps", insert:
+
+```markdown
+### Step 1.5: Search for relevant prior solutions
+
+Dispatch the **learnings-researcher** subagent with the Task tool:
+- Provide: the epic name, component type, list of step names
+- Wait for the researcher to return relevant learnings
+- Incorporate any critical patterns or known pitfalls into the step breakdown and test design
+- If the researcher found solutions for similar problems, reference them in the implementation plan
+```
+
+**Step 2: Commit**
+
+```bash
+git add skills/plan-epic/SKILL.md
+git commit -m "feat: invoke learnings-researcher during epic planning"
+```
+
+### Task 14.3: Update build-step skill for compound learning
 
 **Files:**
 - Modify: `skills/build-step/SKILL.md`
 
-**Step 1: Add topic distillation instructions**
+**Step 1: Add knowledge search on failure + solution doc capture**
 
-In the developer teammate instructions, after the debrief entry requirement, add:
+In the developer teammate instructions, replace the old debrief requirement with:
 
 ```
-- After writing the debrief entry, check if any discoveries are topic-specific:
-  - Data-related learnings → append to docs/context/learnings/data-quirks.md
-  - Model library learnings → append to docs/context/learnings/model-library-notes.md
-  - PySpark learnings → append to docs/context/learnings/pyspark-gotchas.md
-  - Failed approaches → append to docs/context/learnings/failed-approaches.md
-  - If a new topic emerges, create a new file with a descriptive name
-- Topic files are summaries for quick reference; debrief-log.yaml is the detailed record
+Knowledge capture:
+- When you resolve a notable problem (test failure fixed, workaround found, unexpected behavior):
+  1. Write a solution doc to docs/solutions/<category>/ using the template
+  2. Include validated YAML frontmatter (the TaskCompleted hook validates the schema)
+  3. Use descriptive filenames: YYYY-MM-DD-brief-description.md
+
+- When you encounter a problem you can't immediately solve:
+  1. Ask the lead to dispatch the learnings-researcher agent
+  2. The researcher will search prior solutions for similar issues
+  3. Apply any relevant findings before continuing
+
+- At epic boundaries, you'll be asked: "Is this project-specific or team-wide?"
+  - Project-specific → stays in ./docs/solutions/
+  - Team-wide → will be copied to the shared knowledge repo
+```
+
+In the reviewer teammate instructions, add:
+
+```
+- Verify any new solution docs have valid YAML frontmatter (run validate-solution-doc.sh)
+- Flag solution docs that seem universally applicable (not just project-specific)
 ```
 
 **Step 2: Commit**
 
 ```bash
 git add skills/build-step/SKILL.md
-git commit -m "feat: add topic-based learnings distillation to developer workflow"
+git commit -m "feat: add compound learning (solution capture + knowledge search) to build-step"
 ```
 
-### Task 14.3: Create plugin-level knowledge directory
+### Task 14.4: Create .harnessrc template with project profile
 
 **Files:**
-- Create: `knowledge/README.md`
-- Create: `knowledge/model-library.md`
-- Create: `knowledge/pyspark-patterns.md`
-- Create: `knowledge/common-pitfalls.md`
+- Modify: `templates/.harnessrc.template`
 
-**Step 1: Create the knowledge directory with seed files**
+**Step 1: Add project profile and shared knowledge path**
 
-`knowledge/README.md`:
-```markdown
-# Cross-Project Knowledge Base
+Add to the existing `.harnessrc.template`:
 
-This directory contains learnings that apply across all client projects.
-These files are NOT project-specific — they capture knowledge about shared
-tools, libraries, and patterns.
+```yaml
+# Project profile for relevance matching with cross-project learnings
+# The learnings-researcher agent uses this to filter solution docs
+# project_profile:
+#   project_types: [churn_modeling]     # What kind of project this is
+#   data_characteristics: [large_dataset, sparse_nulls, categorical_heavy]
+#   model_types: [logistic_regression, gradient_boosting]
+#   industry: insurance
+#   tools: [pyspark, databricks, custom_model_library]
 
-Agents read these files via the SessionStart hook. New entries should be
-added via PR to the plugin repo when a project-specific learning is
-identified as universally applicable.
-
-## How Learnings Get Here
-
-1. During a client project, agents write to `docs/context/learnings/` (project-level)
-2. At epic boundaries, the orchestrator reviews debrief entries
-3. Learnings that are not project-specific are promoted here via PR
-4. The SessionStart hook includes relevant knowledge in agent context
-```
-
-`knowledge/model-library.md`:
-```markdown
-# In-House Model Library
-
-Learnings about the custom modeling library used across client projects.
-
-<!-- Entries are added as they're discovered across projects -->
-```
-
-`knowledge/pyspark-patterns.md`:
-```markdown
-# PySpark Patterns
-
-PySpark patterns and gotchas that apply across all client projects.
-
-<!-- Entries are added as they're discovered across projects -->
-```
-
-`knowledge/common-pitfalls.md`:
-```markdown
-# Common Pitfalls
-
-Recurring mistakes and their solutions discovered across client projects.
-
-<!-- Entries are added as they're discovered across projects -->
+# Path to the shared team knowledge repository
+# shared_knowledge_path: "~/repos/team-knowledge"
 ```
 
 **Step 2: Commit**
 
 ```bash
-git add knowledge/
-git commit -m "feat: add plugin-level cross-project knowledge base"
+git add templates/.harnessrc.template
+git commit -m "feat: add project profile and shared knowledge path to .harnessrc template"
 ```
 
-### Task 14.4: Update session-start hook to inject plugin knowledge
-
-**Files:**
-- Modify: `hooks/session-start.sh`
-
-**Step 1: Add plugin knowledge injection**
-
-After the existing debrief learnings injection, add:
-
-```bash
-# Include relevant cross-project knowledge from plugin
-KNOWLEDGE_DIR="${PLUGIN_ROOT}/knowledge"
-if [[ -d "$KNOWLEDGE_DIR" ]]; then
-    knowledge_files=$(ls "$KNOWLEDGE_DIR"/*.md 2>/dev/null | grep -v README.md || true)
-    if [[ -n "$knowledge_files" ]]; then
-        # Check if any knowledge files have content beyond the header
-        has_content=false
-        for kfile in $knowledge_files; do
-            line_count=$(wc -l < "$kfile" | tr -d ' ')
-            if [[ "$line_count" -gt 5 ]]; then
-                has_content=true
-                break
-            fi
-        done
-        if [[ "$has_content" == "true" ]]; then
-            context+="\\n\\n## Cross-Project Knowledge\\n"
-            context+="See plugin knowledge/ directory for learnings from prior projects.\\n"
-        fi
-    fi
-fi
-```
-
-**Step 2: Run session-start tests to verify no regression**
-
-Run: `npx bats tests/session_start_test.bats`
-Expected: All tests PASS
-
-**Step 3: Commit**
-
-```bash
-git add hooks/session-start.sh
-git commit -m "feat: inject cross-project knowledge from plugin into session context"
-```
-
-### Task 14.5: Update submit-epic skill to promote learnings
+### Task 14.5: Update submit-epic skill for knowledge promotion
 
 **Files:**
 - Modify: `skills/submit-epic/SKILL.md`
@@ -2688,29 +2865,31 @@ After the quality scan step and before creating the PR, add:
 ```markdown
 ### Step 2.5: Promote cross-project learnings
 
-Review `docs/context/debrief-log.yaml` entries for this epic. Identify learnings that are NOT project-specific — they apply to the in-house library, PySpark in general, or common patterns.
+Review `docs/solutions/` for solution docs created during this epic.
 
-For each cross-project learning, suggest adding it to the plugin's `knowledge/` directory. Present to the user:
+For each doc where `applies_to.scope` is `universal` or the content is clearly not project-specific:
 
-"These learnings from this epic might help future projects:
-- [learning 1] → knowledge/model-library.md
-- [learning 2] → knowledge/pyspark-patterns.md
+1. Present to the user: "These solutions from this epic might help future projects:"
+   - [title] → [category/filename]
 
-Want me to create a PR to the plugin repo with these additions?"
+2. If the user approves promotion and `shared_knowledge_path` is configured in `.harnessrc`:
+   - Copy the solution doc to `<shared_knowledge_path>/docs/solutions/<category>/`
+   - Commit to the shared repo
+   - Create a PR (or push directly if configured)
 
-If approved, use `gh` to create a PR to the plugin repository adding the learnings.
+3. If no shared knowledge path is configured, suggest the user set one up.
 ```
 
 **Step 2: Commit**
 
 ```bash
 git add skills/submit-epic/SKILL.md
-git commit -m "feat: add cross-project learning promotion to submit-epic skill"
+git commit -m "feat: add solution doc promotion to shared team knowledge repo"
 ```
 
 ---
 
-## Epic 15: Self-Verification CLI Pattern
+## Epic 15: Self-Verification CLI + Final Wiring
 
 ### Task 15.1: Create self-check script
 
@@ -2763,12 +2942,26 @@ else
 fi
 echo ""
 
-# Check 3: Debrief exists
-echo "--- Checking debrief ---"
-if bash "${SCRIPT_DIR}/check-debrief.sh" "$STEP" "$EPIC" 2>&1; then
-    passed=$((passed + 1))
+# Check 3: Validate any new solution docs
+echo "--- Validating solution docs ---"
+SCHEMA="${SCRIPT_DIR}/../lib/solution-schema.yaml"
+new_docs=$(git diff --name-only --diff-filter=A HEAD -- 'docs/solutions/*.md' 'docs/solutions/**/*.md' 2>/dev/null || true)
+if [[ -n "$new_docs" ]]; then
+    doc_pass=true
+    while IFS= read -r doc; do
+        if ! bash "${SCRIPT_DIR}/validate-solution-doc.sh" "$doc" "$SCHEMA" 2>&1; then
+            doc_pass=false
+        fi
+    done <<< "$new_docs"
+    if [[ "$doc_pass" == "true" ]]; then
+        echo "  PASS: All solution docs valid"
+        passed=$((passed + 1))
+    else
+        failed=$((failed + 1))
+    fi
 else
-    failed=$((failed + 1))
+    echo "  SKIP: No new solution docs"
+    passed=$((passed + 1))
 fi
 echo ""
 
@@ -2816,7 +3009,44 @@ In the developer teammate instructions, add:
 
 ```bash
 git add hooks/self-check.sh skills/build-step/SKILL.md
-git commit -m "feat: add self-check verification script for developer pre-completion"
+git commit -m "feat: add self-check verification script with solution doc validation"
+```
+
+### Task 15.2: Update hooks.json with all hook events
+
+**Files:**
+- Modify: `hooks/hooks.json`
+
+**Step 1: Add TaskCompleted hook for enforcement**
+
+Update `hooks/hooks.json` to include all configured hooks:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
+            "async": false
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Note: `TaskCompleted` and `TeammateIdle` hooks depend on Claude Code's agent teams API finalization. The enforcement scripts (`check-test-immutability.sh`, `validate-solution-doc.sh`, `definition-of-done.sh`) are all callable via the self-check CLI pattern in the meantime.
+
+**Step 2: Commit**
+
+```bash
+git add hooks/hooks.json
+git commit -m "feat: finalize hooks.json configuration"
 ```
 
 ---
@@ -2837,8 +3067,8 @@ git commit -m "feat: add self-check verification script for developer pre-comple
 | 10 | 10.1-10.2 | Quality scan script + skill |
 | 11 | 11.1-11.2 | Remaining commands (/next, review-step) |
 | 12 | 12.1-12.4 | Integration, cleanup, test run, README |
-| 13 | 13.1-13.4 | Agent debrief protocol with tests (TDD) |
-| 14 | 14.1-14.5 | Agent-discoverable docs + cross-project knowledge |
-| 15 | 15.1 | Self-verification CLI pattern |
+| 13 | 13.1-13.4 | Compound learning — solution doc schema, validation, scaffolding (TDD) |
+| 14 | 14.1-14.5 | Learnings researcher agent + knowledge retrieval + promotion |
+| 15 | 15.1-15.2 | Self-verification CLI + final hook wiring |
 
-**Total: 15 epics, 35 tasks**
+**Total: 15 epics, 36 tasks**
