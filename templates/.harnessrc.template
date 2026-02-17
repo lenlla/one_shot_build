@@ -23,3 +23,15 @@
 #   test_command: "pytest tests/ -v"
 #   lint_command: "ruff check src/ tests/"
 #   format_command: "ruff format src/ tests/"
+
+# Project profile for relevance matching with cross-project learnings
+# The learnings-researcher agent uses this to filter solution docs
+# project_profile:
+#   project_types: [churn_modeling]     # What kind of project this is
+#   data_characteristics: [large_dataset, sparse_nulls, categorical_heavy]
+#   model_types: [logistic_regression, gradient_boosting]
+#   industry: insurance
+#   tools: [pyspark, databricks, custom_model_library]
+
+# Path to the shared team knowledge repository
+# shared_knowledge_path: "~/repos/team-knowledge"
