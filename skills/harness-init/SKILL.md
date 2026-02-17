@@ -37,7 +37,17 @@ Scaffold a new client analytics project with the one-shot-build harness structur
 ├── src/
 │   └── utils/
 ├── tests/
-└── scripts/
+├── scripts/
+└── docs/
+    └── solutions/                    # Per-project solution docs (compound learning)
+        ├── data-quality-issues/
+        ├── model-library-issues/
+        ├── pyspark-issues/
+        ├── performance-issues/
+        ├── integration-issues/
+        ├── best-practices/
+        └── patterns/
+            └── critical-patterns.md  # Always-read required knowledge
 ```
 
 ## Template Processing
@@ -62,6 +72,17 @@ Create an empty `claude-progress.txt` with a header line:
 
 ```
 # Claude Progress Log — {{PROJECT_NAME}}
+```
+
+Create a seed `docs/solutions/patterns/critical-patterns.md`:
+
+```markdown
+# Critical Patterns
+
+> This file is ALWAYS read by the learnings-researcher agent. Add patterns here
+> that every developer/agent must know about for this project.
+
+<!-- Add critical patterns as they are discovered -->
 ```
 
 Log the initialization:
