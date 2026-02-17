@@ -32,13 +32,29 @@ bash <plugin_root>/hooks/quality-scan.sh
 
 Flag any findings but don't block the PR.
 
-### Step 3: Create the PR
+### Step 3: Promote cross-project learnings
+
+Review `docs/solutions/` for solution docs created during this epic.
+
+For each doc where `applies_to.scope` is `universal` or the content is clearly not project-specific:
+
+1. Present to the user: "These solutions from this epic might help future projects:"
+   - [title] → [category/filename]
+
+2. If the user approves promotion and `shared_knowledge_path` is configured in `.harnessrc`:
+   - Copy the solution doc to `<shared_knowledge_path>/docs/solutions/<category>/`
+   - Commit to the shared repo
+   - Create a PR (or push directly if configured)
+
+3. If no shared knowledge path is configured, suggest the user set one up.
+
+### Step 4: Create the PR
 Generate a PR using `gh pr create`:
 - Title: "Epic: [epic-name]"
 - Body: Summary of what was built, list of steps completed, test results, any quality scan findings
 - Base branch: main (or as configured)
 
-### Step 4: Update state
+### Step 5: Update state
 - Set `epics.<current_epic>.status: completed`
 - Set `epics.<current_epic>.pr: "#<pr_number>"`
 - Determine the next epic:
@@ -46,13 +62,13 @@ Generate a PR using `gh pr create`:
   - If all epics are complete: set `current_phase: done`
 - Clear `current_step`
 
-### Step 5: Commit state and log
+### Step 6: Commit state and log
 ```bash
 git add project-state.yaml claude-progress.txt
 git commit -m "chore: mark epic <name> complete, advance to next"
 ```
 
-### Step 6: Report
+### Step 7: Report
 If more epics remain:
 - "PR created: [URL]. Once merged, run `/plan-epic` to start the next epic."
 
