@@ -20,6 +20,14 @@ Phase 3 of the one-shot-build workflow. Create a TDD plan for the current epic a
 ### Step 1: Read the epic spec
 Read the current epic's YAML from `docs/epics/`. Understand the acceptance criteria.
 
+### Step 1.5: Search for relevant prior solutions
+
+Dispatch the **learnings-researcher** subagent with the Task tool:
+- Provide: the epic name, component type, list of step names
+- Wait for the researcher to return relevant learnings
+- Incorporate any critical patterns or known pitfalls into the step breakdown and test design
+- If the researcher found solutions for similar problems, reference them in the implementation plan
+
 ### Step 2: Break into steps
 Break the epic into sequential steps. Each step should be:
 - One focused unit of work
