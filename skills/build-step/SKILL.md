@@ -66,6 +66,9 @@ Developer instructions:
   - At epic boundaries, you'll be asked: "Is this project-specific or team-wide?"
     - Project-specific → stays in ./docs/solutions/
     - Team-wide → will be copied to the shared knowledge repo
+- Before marking a step complete, run self-verification:
+  bash <plugin_root>/hooks/self-check.sh <step-name> <epic-name> tdd-baseline-<epic>
+- Fix any failures before proceeding. Do NOT rely on the TaskCompleted hook to catch these.
 
 Reviewer instructions:
 - After the developer completes a step, review the diff
