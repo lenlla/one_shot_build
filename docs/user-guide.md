@@ -199,10 +199,14 @@ The cross-epic loop is driven by you: after submitting a PR, you run `/next` aga
 
 The harness will:
 
-1. **Run the Definition of Done** — automated checks for coverage, standards, documentation
-2. **Run a quality scan** — flags any remaining issues
-3. **Promote learnings** — if you have a shared team knowledge repo configured, universal solutions are offered for promotion
-4. **Create a Pull Request** — with a summary of work, test results, and quality findings
+1. **Run the Definition of Done** — automated checks that all steps have passing tests and approved reviews, no TODO comments or debug prints remain, and `kyros-agent-workflow/claude-progress.txt` is up to date.
+2. **Run a quality scan** — checks for coding standard deviations, unused imports, missing type hints, and other drift.
+3. **Promote learnings** — if you have a shared team knowledge repo configured, universal solutions are offered for promotion.
+4. **Create a Pull Request** — with a summary of work, test results, and quality findings.
+
+**If the Definition of Done fails:** The harness shows you exactly which checks failed and asks how to proceed. DoD failures are **blocking** — no PR is created until they're resolved. Typically you'd go back and fix the issues (e.g., remove leftover TODOs, ensure all steps are marked as reviewed) and run `/submit` again.
+
+**If the quality scan finds issues:** These are **non-blocking** — the findings are flagged in the PR description but don't prevent submission. Auto-fixable issues (unused imports, formatting) can be fixed and committed on the spot. Manual issues (missing type hints) are listed for you to address at your discretion.
 
 **What you'll decide:** Review the PR and merge it when you're satisfied.
 
