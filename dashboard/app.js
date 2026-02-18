@@ -8,7 +8,8 @@
     // -----------------------------------------------------------------------
     // Configuration
     // -----------------------------------------------------------------------
-    const STATE_PATH = '/project-state.yaml';
+    const urlParams = new URLSearchParams(window.location.search);
+    const STATE_PATH = urlParams.get('state') || '/execution-state.yaml';
     const REFRESH_INTERVAL_MS = 5000;
 
     // DOM references
@@ -37,7 +38,7 @@
     // -----------------------------------------------------------------------
 
     /**
-     * Fetch and parse project-state.yaml from the local server.
+     * Fetch and parse execution-state.yaml from the local server.
      * @param {string} path — URL path to the YAML file
      * @returns {Promise<object|null>} parsed state object or null on error
      */
@@ -82,18 +83,21 @@
         const name = (state.project && state.project.name) || 'One-Shot Build';
         dom.projectName.textContent = name;
 
-        // Current phase
-        const phase = (state.workflow && state.workflow.current_phase) || '—';
+        // Derive phase from epic statuses (no global phase concept)
+        const epics = state.epics || {};
+        const epicNames = Object.keys(epics);
+        const inProgress = epicNames.find(function (k) {
+            return !['completed', 'pending'].includes(epics[k].status);
+        });
+        const phase = inProgress ? epics[inProgress].status : (epicNames.every(function (k) { return epics[k].status === 'completed'; }) ? 'done' : 'pending');
         dom.phaseBadge.textContent = 'Phase: ' + formatLabel(phase);
         dom.phaseBadge.className = 'badge phase-' + phase;
 
-        // Current epic
-        const epic = (state.workflow && state.workflow.current_epic) || '—';
+        // Current epic — derive from active status
+        const epic = inProgress || '—';
         dom.epicBadge.textContent = 'Epic: ' + formatLabel(epic);
 
         // Progress — count completed epics vs total
-        const epics = state.epics || {};
-        const epicNames = Object.keys(epics);
         const completedCount = epicNames.filter(function (k) {
             return epics[k].status === 'completed';
         }).length;
@@ -439,6 +443,7 @@
             'in_progress': 'in_progress',
             'in-progress': 'in_progress',
             'building':    'in_progress',
+            'submitting':  'review',
             'active':      'in_progress',
             'review':      'review',
             'in_review':   'review',
