@@ -1,56 +1,58 @@
 ---
 name: gather-context
-description: Use when starting Phase 1 of a client project. Runs data profiling via the profiler agent and conducts analyst Q&A. Requires kyros-agent-workflow/project-state.yaml to show current_phase as gather_context.
+description: Profile client data tables. Creates one data-profile-<table>.md per table. Supports multiple tables. Detects existing profiles and asks whether to overwrite or create a new version.
 ---
 
-# Gather Context
+# Profile Data
 
 ## Overview
 
-Phase 1 of the one-shot-build workflow. Profile the client data and conduct a Q&A with the analyst to understand the project.
+Run automated data profiling on one or more client data tables. Each table gets its own profile report.
 
 ## Pre-Conditions
 
-- `kyros-agent-workflow/project-state.yaml` exists with `workflow.current_phase: gather_context`
-- Client data file is accessible (ask the user for the path if not known)
+- Project has been initialized with `/init`
+- Client data tables are accessible
 
 ## Process
 
-### Step 1: Locate the data
-Use AskUserQuestion to ask: "Where is the client data file? (path to CSV/Excel/Parquet)"
+### Step 1: Determine tables to profile
 
-### Step 2: Profile the data
-Dispatch the **profiler** subagent with the Task tool:
+Check if the user provided table paths as arguments to the `/profile-data` command.
+
+- **If arguments provided:** Use those as the table paths.
+- **If no arguments:** Use AskUserQuestion to ask: "What tables should I profile? Provide the path(s) to your data tables (CSV, Excel, Parquet, or database table references). You can specify multiple tables separated by spaces."
+
+### Step 2: Check for existing profiles
+
+For each table, check if a profile already exists at `kyros-agent-workflow/docs/context/data-profile-<table-name>.md`.
+
+If a profile exists for any table, use AskUserQuestion to ask for each one:
+"A profile already exists for `<table-name>`. Would you like to:"
+- Overwrite the existing profile
+- Create a new version (saves as `data-profile-<table-name>-v<N>.md`)
+
+### Step 3: Profile each table
+
+For each table, dispatch the **profiler** subagent with the Task tool:
 - subagent_type: use the `profiler` agent definition
-- Prompt: "Profile the data at [path]. Write results to kyros-agent-workflow/docs/context/data-profile.md."
-- Wait for the profiler to complete
+- Prompt: "Profile the data at [path]. Write results to kyros-agent-workflow/docs/context/data-profile-<table-name>.md."
+  - Include column types, distributions, null counts, unique values, min/max, data quality issues
+  - If this is a versioned profile, use the versioned filename
+- Wait for the profiler to complete before starting the next table
 
-### Step 3: Review the profile
-Read `kyros-agent-workflow/docs/context/data-profile.md` and present a summary to the analyst.
-Highlight any data quality concerns (high nulls, low variance, type mismatches).
+### Step 4: Present summaries
 
-### Step 4: Analyst Q&A
-Conduct an interactive Q&A session with the analyst. Ask ONE question at a time:
-- What is the business objective for this project?
-- What is the target variable?
-- Are there known data quality issues?
-- Are there columns that should be excluded?
-- What is the expected output format?
-- Any domain-specific constraints?
+For each profiled table, read the generated profile and present a brief summary to the analyst:
+- Number of rows and columns
+- Key data quality concerns (high nulls, low variance, type mismatches)
+- Notable patterns
 
-Save responses to `kyros-agent-workflow/docs/context/analyst-notes.md`.
+### Step 5: Commit
 
-### Step 5: Gate check
-Use AskUserQuestion: "Does the data profile look complete? Ready to move to epic definition?"
-- If yes: update `kyros-agent-workflow/project-state.yaml` → `workflow.current_phase: define_epics`
-- If no: ask what needs further exploration
-
-### Step 6: Commit and log progress
 ```bash
-git add kyros-agent-workflow/docs/context/
-git commit -m "docs: add data profile and analyst notes (Phase 1 complete)"
+git add kyros-agent-workflow/docs/context/data-profile-*.md
+git commit -m "docs: add data profiles for <table-names>"
 ```
 
-Log: "Phase 1 (gather context) complete. Data profiled, analyst Q&A conducted."
-
-Tell the user: "Context gathered. Run `/define-epics` to break the project into epics."
+Tell the user: "Data profiling complete. You can now run `/define-epics` to plan your project, passing these profiles as context if desired."
