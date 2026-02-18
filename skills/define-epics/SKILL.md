@@ -1,82 +1,105 @@
 ---
 name: define-epics
-description: Use when Phase 1 is complete and it's time to break the project into epics. Collaboratively define epics with the analyst. Requires current_phase to be define_epics.
+description: Brainstorm what to build, gather context, and collaboratively define project epics. Opens with "What do you want to build today?" If data profiles are provided as context, asks targeted data questions. Saves epic YAML specs to an analyst-named directory.
 ---
 
 # Define Epics
 
 ## Overview
 
-Phase 2 of the one-shot-build workflow. Collaboratively break the project into epics with the analyst.
-
-## Pre-Conditions
-
-- `kyros-agent-workflow/project-state.yaml` shows `workflow.current_phase: define_epics`
-- `kyros-agent-workflow/docs/context/data-profile.md` and `kyros-agent-workflow/docs/context/analyst-notes.md` exist
+A collaborative brainstorming and planning session. Explore what the analyst wants to build, understand the context, then break the work into sequential epics.
 
 ## Process
 
-### Step 1: Read context
-Read `kyros-agent-workflow/docs/context/data-profile.md` and `kyros-agent-workflow/docs/context/analyst-notes.md` to understand the project.
+### Step 1: Open the brainstorming
 
-### Step 2: Gather starting points
+Start with: **"What do you want to build today?"**
 
-Before proposing an epic breakdown, ask the analyst using AskUserQuestion:
+Let the analyst describe their vision. Listen and ask follow-up questions ONE at a time. Prefer multiple-choice questions when possible.
 
-"Do you already have an initial set of epics in mind, or would you like me to search the knowledge base for similar past projects as a starting point?"
+### Step 2: Gather context
 
-- If the analyst provides their own epics: use those as the starting proposal in Step 3.
-- If the analyst wants knowledge base suggestions: dispatch the **learnings-researcher** subagent with the Task tool. Provide the project type, data characteristics, and business objective from `kyros-agent-workflow/docs/context/analyst-notes.md`. Ask the researcher to find epic breakdowns from similar past projects. Use the results to inform the proposal in Step 3.
-- If the analyst has partial ideas: combine their input with learnings-researcher results.
+Check if the user provided context file paths as arguments to the `/define-epics` command.
 
-### Step 3: Propose epic breakdown
-Based on the data profile, analyst notes, and any input from Step 2, propose a breakdown of the project into sequential epics. Present to the analyst:
+- **If arguments provided:** Read each file. Acknowledge what you've learned from each.
+- **If no arguments:** Use AskUserQuestion: "Can you point me to any relevant context? This could include data profiles, requirements docs, existing code, or configuration files. Provide file paths or say 'none' to continue."
+
+Read all provided context files.
+
+### Step 3: Data-specific questions (if data profile provided)
+
+If any of the context files is a data profile (`data-profile-*.md`), ask targeted questions about the data. ONE question at a time:
+
+- "I see [N] columns in [table]. Are there columns that should be excluded from analysis?"
+- "The [column] has [X]% null values. Is this expected? How should nulls be handled?"
+- "I notice [pattern]. Is this a known characteristic of this data?"
+- "What is the target variable for modeling?"
+- "Are there any domain-specific constraints I should know about?"
+
+Only ask questions that are relevant based on what the profile reveals. Skip questions where the answer is obvious from the data.
+
+### Step 4: Search knowledge base (optional)
+
+If a shared knowledge repo is configured in `.harnessrc` (`shared_knowledge_path`), ask the analyst:
+"Would you like me to search past projects for similar work that could inform our epic breakdown?"
+
+If yes, dispatch the **learnings-researcher** subagent with project context. Use findings to inform the epic proposal.
+
+### Step 5: Propose epic breakdown
+
+Based on everything gathered, propose a breakdown of the project into sequential epics:
 
 ```
 ## Proposed Epics
 
-1. **Data Loading & Validation** — Load client data, validate schema, apply quality thresholds
-2. **Data Translation** — Column renaming, type casting, variable grouping per config
-3. **[Model Name] Execution** — Fit [model] with provided config and hyperparameters
-4. **Report Generation** — Produce coefficient tables, predictions, summaries
+1. **[Epic Name]** — [One-line description]
+   - Acceptance criteria: [2-3 bullet points]
+2. **[Epic Name]** — [One-line description]
+   - Acceptance criteria: [2-3 bullet points]
 ...
 ```
 
-### Step 4: Refine with analyst
+Lead with your recommended breakdown and explain the reasoning.
+
+### Step 6: Refine with analyst
+
 Ask ONE question at a time to refine:
 - "Does this epic breakdown match how you see the project?"
 - "Should any epics be split or combined?"
 - "What's the right order?"
 - "Are there epics I'm missing?"
 
-### Step 5: Write epic specs
-For each agreed epic, create a YAML file in `kyros-agent-workflow/docs/epics/`:
+Iterate until the analyst approves the breakdown.
+
+### Step 7: Name the output directory
+
+Use AskUserQuestion: "What should I name the epics directory? This is where the epic specs will be saved and where `/execute-plan` will look for them. Examples: `epics/v1`, `epics/initial-model`, `epics/feature-x`"
+
+Create the directory.
+
+### Step 8: Write epic specs
+
+For each agreed epic, create a YAML file in the named directory:
 
 ```yaml
-# kyros-agent-workflow/docs/epics/01-data-loading.yaml
-name: "Data Loading & Validation"
-description: "Load client data files, validate against schema, apply quality thresholds"
+# <epics-dir>/01-<epic-name>.yaml
+name: "[Epic Name]"
+description: "[Detailed description]"
 acceptance_criteria:
-  - "All specified data files loaded successfully"
-  - "Schema validation passes against project-config.yaml"
-  - "Data quality thresholds enforced per data-quality-thresholds.yaml"
-  - "Issue log written for any quality concerns"
+  - "[Criterion 1]"
+  - "[Criterion 2]"
+  - "[Criterion 3]"
 dependencies: []
 estimated_steps: 4
 ```
 
-### Step 6: Update state
-- Add all epics to `kyros-agent-workflow/project-state.yaml` under `epics:` with `status: pending`
-- Set the first epic as `workflow.current_epic`
-- Set `workflow.current_phase: plan`
+Number the files to preserve ordering (01-, 02-, etc.).
 
-### Step 7: Gate check
-Use AskUserQuestion: "Epic breakdown is defined. Ready to start planning the first epic?"
+### Step 9: Commit
 
-### Step 8: Commit and log progress
 ```bash
-git add kyros-agent-workflow/docs/epics/ kyros-agent-workflow/project-state.yaml
-git commit -m "docs: define project epics (Phase 2 complete)"
+git add <epics-dir>/
+git commit -m "docs: define epics in <epics-dir>"
 ```
 
-Tell the user: "Epics defined. Run `/plan-epic` to create a TDD plan for the first epic."
+Tell the user: "Epics defined in `<epics-dir>/`. When you're ready to start building, run `/execute-plan <epics-dir>` (interactive) or `/execute-plan-autonomously <epics-dir>` (fully autonomous)."
