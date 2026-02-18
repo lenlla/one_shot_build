@@ -11,12 +11,13 @@ Scaffold a new client analytics project with the one-shot-build harness structur
 
 ## Process
 
-1. **Ask project name** — Use AskUserQuestion to get the project name
-2. **Create directory structure** — Create all required directories
-3. **Generate files from templates** — Replace `{{PROJECT_NAME}}` and `{{CREATED_DATE}}` placeholders
-4. **Initialize git** — If not already a git repo, initialize one
-5. **Create initial commit** — Commit the scaffolded structure
-6. **Update state** — Set workflow phase to `gather_context`
+1. **Check for existing project** — If `project-state.yaml` already exists in the current directory, STOP and tell the user: "This directory already has a one-shot-build project. Run `/status` to see its state." Do NOT overwrite existing files.
+2. **Ask project name** — Use AskUserQuestion to get the project name
+3. **Create directory structure** — Create all required directories
+4. **Generate files from templates** — Replace `{{PROJECT_NAME}}` and `{{CREATED_DATE}}` placeholders
+5. **Initialize git** — If not already a git repo, initialize one
+6. **Create initial commit** — Commit the scaffolded structure
+7. **Update state** — Set workflow phase to `gather_context`
 
 ## Directory Structure to Create
 
