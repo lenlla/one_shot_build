@@ -4,12 +4,13 @@
 
 set -euo pipefail
 
-# Determine project root (where project-state.yaml lives)
+# Determine project root (parent directory containing kyros-agent-workflow/)
 # Can be overridden by setting PROJECT_ROOT before sourcing
 PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
 
-STATE_FILE="${PROJECT_ROOT}/project-state.yaml"
-PROGRESS_FILE="${PROJECT_ROOT}/claude-progress.txt"
+HARNESS_DIR="kyros-agent-workflow"
+STATE_FILE="${PROJECT_ROOT}/${HARNESS_DIR}/project-state.yaml"
+PROGRESS_FILE="${PROJECT_ROOT}/${HARNESS_DIR}/claude-progress.txt"
 
 # --- Core YAML operations ---
 
