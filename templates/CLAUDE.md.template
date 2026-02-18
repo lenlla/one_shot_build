@@ -3,37 +3,29 @@
 ## Quick Start
 
 You are working on a client analytics project governed by the one-shot-build harness.
-Run `/status` to see where things stand. Run `/next` to advance.
-
-## Current State
-
-Read `kyros-agent-workflow/project-state.yaml` for the canonical workflow state.
-Read `kyros-agent-workflow/claude-progress.txt` for a log of what's been done.
+Run `/status` to see where things stand.
 
 ## Workflow
 
-This project follows a phased workflow. You must complete each phase before advancing:
+This project follows a command-driven workflow:
 
-1. **Gather Context** (`/gather-context`) — Profile data, Q&A with analyst
-2. **Define Epics** (`/define-epics`) — Collaboratively break down the project
-3. **Plan Epic** (`/plan-epic`) — TDD planning for each epic
-4. **Build** (`/build`) — Agent team: developer + reviewer
-5. **Submit** (`/submit`) — PR + advance to next epic
+1. **Profile Data** (`/profile-data`) — Automated data profiling
+2. **Define Epics** (`/define-epics`) — Brainstorm and plan epics with the analyst
+3. **Execute Plan** (`/execute-plan <epics-dir>`) — Build epics interactively
+   - Or `/execute-plan-autonomously <epics-dir>` for fully autonomous execution
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `kyros-agent-workflow/project-state.yaml` | Workflow state (phase, epic, step) |
 | `kyros-agent-workflow/claude-progress.txt` | Activity log |
 | `kyros-agent-workflow/.harnessrc` | Project-specific config overrides |
-| `kyros-agent-workflow/docs/context/data-profile.md` | Data exploration results |
-| `kyros-agent-workflow/docs/context/analyst-notes.md` | Analyst Q&A outcomes |
-| `kyros-agent-workflow/docs/epics/*.yaml` | Epic definitions |
+| `kyros-agent-workflow/docs/context/data-profile-*.md` | Data profiling results |
+| `<epics-dir>/*.yaml` | Epic definitions |
+| `<epics-dir>/.execution-state.yaml` | Execution progress (created by execute-plan) |
 | `kyros-agent-workflow/docs/standards/coding-standards.md` | Coding conventions |
 | `kyros-agent-workflow/docs/standards/definition-of-done.md` | DoD checklist |
 | `kyros-agent-workflow/docs/standards/review-criteria.md` | What the reviewer checks |
-| `kyros-agent-workflow/config/project-config.yaml` | Human decisions (mappings, predictors, etc.) |
 
 ## Rules
 
@@ -41,7 +33,6 @@ This project follows a phased workflow. You must complete each phase before adva
 - **Tests are immutable during build.** Do not modify test files written during planning.
 - **Commit after every step.** Descriptive messages. Code must be production-quality at every commit.
 - **Self-review before requesting review.** Check your own work first.
-- **Emit structured status blocks** after completing each step (see `kyros-agent-workflow/docs/standards/status-block-format.md`).
 
 ## Anti-Patterns (DO NOT)
 
@@ -50,11 +41,3 @@ This project follows a phased workflow. You must complete each phase before adva
 - Skip the review loop
 - Refactor working code that isn't part of the current step
 - Continue past completion signals
-- Probe data shapes without validation — use typed boundaries
-
-## Standards
-
-See `kyros-agent-workflow/docs/standards/` for:
-- `coding-standards.md` — Style, conventions, shared utilities
-- `definition-of-done.md` — What "done" means for each step
-- `review-criteria.md` — What the reviewer checks
