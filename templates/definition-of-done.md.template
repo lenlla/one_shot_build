@@ -12,11 +12,11 @@ A step is "done" when ALL of the following are true:
 - [ ] Review agent approved
 
 ## Per Epic (before PR submission)
-- [ ] All steps marked completed in kyros-agent-workflow/project-state.yaml
+- [ ] All epic steps completed (verified by execution state)
 - [ ] All steps have tests_pass: true AND review_approved: true
 - [ ] kyros-agent-workflow/claude-progress.txt updated with epic summary
 - [ ] No TODO comments in code
 - [ ] No debug print statements
 - [ ] No unused imports
 - [ ] Shared utilities used (no hand-rolled helpers for common operations)
-- [ ] kyros-agent-workflow/project-state.yaml is current and committed
+- [ ] Execution state is current and committed

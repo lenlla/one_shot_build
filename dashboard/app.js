@@ -74,7 +74,7 @@
 
     /**
      * Update header badges from the parsed state object.
-     * @param {object} state — parsed project-state.yaml
+     * @param {object} state — parsed execution-state.yaml
      */
     function updateSummaryBar(state) {
         if (!state) return;
