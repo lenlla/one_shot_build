@@ -27,14 +27,14 @@ This project draws heavily from emerging best practices in "harness engineering"
 - [Anthropic: Effective Harnesses for Long-Running Agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) — Session boot protocol, progress files, feature lists in JSON, two-phase architecture
 - [Phil Schmid: The Importance of Agent Harness in 2026](https://www.philschmid.de/agent-harness-2026) — Lightweight and modular design, context engineering, structured trajectory capture
 - [Claude Code: Agent Teams](https://code.claude.com/docs/en/agent-teams) — Agent team architecture, shared task lists, direct teammate communication
-- [Claude Code: Tasks](https://x.com/trq212/status/2014480496013803643) — Task system for cross-session coordination
+- [Claude Code: Tasks](https://x.com/trq212/status/2014480496013803643) — Tasks primitive for cross-session and cross-subagent coordination with dependencies and file-system persistence
 - [Ralph Loop (frankbria/ralph-claude-code)](https://github.com/frankbria/ralph-claude-code) — Circuit breaker, structured status blocks, dual-condition exit gate, stuck loop detection
 - [Peter Steinberger: Shipping at Inference Speed](https://steipete.me/posts/2025/shipping-at-inference-speed) — Agent-discoverable docs, cross-project knowledge, self-verification CLI, compaction as review
 - [Every Inc: Compound Engineering](https://every.to/chain-of-thought/compound-engineering-how-every-codes-with-agents) — Pull-based knowledge retrieval, structured YAML schema with enum validation, category-based solution docs
-- [Ryan Carson on agent-first workflows](https://x.com/ryancarson/status/2023452909883609111) — Structuring repos so agents can navigate and execute autonomously
-- [Rohit on agentic development patterns](https://x.com/rohit4verse/status/2021622526112358663) — Patterns for agent-driven development with human oversight
-- [Ryan Carson on scaffolding for agents](https://x.com/ryancarson/status/2020931274219594107) — Project scaffolding that maximizes agent effectiveness from first commit
-- [Khaliq Gant on harness patterns](https://x.com/Khaliqgant/status/2019124627860050109) — Practical harness design patterns for production agent workflows
+- [Ryan Carson: Code Factory](https://x.com/ryancarson/status/2023452909883609111) — Risk-tiered merge policy, preflight gates before CI, SHA-pinned review state, automated remediation loops
+- [Rohit: Complete Guide to Building Skills](https://x.com/rohit4verse/status/2021622526112358663) — Skills as dynamic context packages, progressive disclosure, YAML frontmatter design, MCP orchestration patterns
+- [Ryan Carson: Antfarm Agent Teams](https://x.com/ryancarson/status/2020931274219594107) — YAML-defined multi-agent workflows, deterministic step ordering, fresh context per agent, automatic retry and escalation
+- [Khaliq Gant: Let Them Cook](https://x.com/Khaliqgant/status/2019124627860050109) — Multi-agent orchestration lessons: 2-5 agents per lead, role-based CLI assignment, shadow reviewers, trajectory storage for context
 
 ## Key Principles (Adapted from Harness Engineering)
 
