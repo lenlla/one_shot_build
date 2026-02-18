@@ -19,8 +19,18 @@ Phase 2 of the one-shot-build workflow. Collaboratively break the project into e
 ### Step 1: Read context
 Read `kyros-agent-workflow/docs/context/data-profile.md` and `kyros-agent-workflow/docs/context/analyst-notes.md` to understand the project.
 
-### Step 2: Propose epic breakdown
-Based on the data profile and analyst notes, propose a breakdown of the project into sequential epics. Present to the analyst:
+### Step 2: Gather starting points
+
+Before proposing an epic breakdown, ask the analyst using AskUserQuestion:
+
+"Do you already have an initial set of epics in mind, or would you like me to search the knowledge base for similar past projects as a starting point?"
+
+- If the analyst provides their own epics: use those as the starting proposal in Step 3.
+- If the analyst wants knowledge base suggestions: dispatch the **learnings-researcher** subagent with the Task tool. Provide the project type, data characteristics, and business objective from `kyros-agent-workflow/docs/context/analyst-notes.md`. Ask the researcher to find epic breakdowns from similar past projects. Use the results to inform the proposal in Step 3.
+- If the analyst has partial ideas: combine their input with learnings-researcher results.
+
+### Step 3: Propose epic breakdown
+Based on the data profile, analyst notes, and any input from Step 2, propose a breakdown of the project into sequential epics. Present to the analyst:
 
 ```
 ## Proposed Epics
@@ -32,14 +42,14 @@ Based on the data profile and analyst notes, propose a breakdown of the project 
 ...
 ```
 
-### Step 3: Refine with analyst
+### Step 4: Refine with analyst
 Ask ONE question at a time to refine:
 - "Does this epic breakdown match how you see the project?"
 - "Should any epics be split or combined?"
 - "What's the right order?"
 - "Are there epics I'm missing?"
 
-### Step 4: Write epic specs
+### Step 5: Write epic specs
 For each agreed epic, create a YAML file in `kyros-agent-workflow/docs/epics/`:
 
 ```yaml
@@ -55,15 +65,15 @@ dependencies: []
 estimated_steps: 4
 ```
 
-### Step 5: Update state
+### Step 6: Update state
 - Add all epics to `kyros-agent-workflow/project-state.yaml` under `epics:` with `status: pending`
 - Set the first epic as `workflow.current_epic`
 - Set `workflow.current_phase: plan`
 
-### Step 6: Gate check
+### Step 7: Gate check
 Use AskUserQuestion: "Epic breakdown is defined. Ready to start planning the first epic?"
 
-### Step 7: Commit and log progress
+### Step 8: Commit and log progress
 ```bash
 git add kyros-agent-workflow/docs/epics/ kyros-agent-workflow/project-state.yaml
 git commit -m "docs: define project epics (Phase 2 complete)"

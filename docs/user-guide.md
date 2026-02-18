@@ -86,9 +86,10 @@ The harness will:
 
 The harness will:
 
-1. **Propose an epic breakdown** — a sequence of work chunks (e.g., Data Loading, Data Translation, Model Execution, Report Generation)
-2. **Refine with you** — ask whether epics should be split, combined, reordered, or if any are missing
-3. **Write epic specs** — each epic gets acceptance criteria and dependency info
+1. **Ask for your starting point** — do you already have epics in mind, or would you like it to search the knowledge base for similar past projects as inspiration?
+2. **Propose an epic breakdown** — based on your input (or learnings from past projects), propose a sequence of work chunks (e.g., Data Loading, Data Translation, Model Execution, Report Generation)
+3. **Refine with you** — ask whether epics should be split, combined, reordered, or if any are missing
+4. **Write epic specs** — each epic gets acceptance criteria and dependency info
 
 **What you'll decide:** Shape the epic breakdown to match how you think about the project. This is the most important planning step — get it right here and everything downstream flows smoothly.
 
