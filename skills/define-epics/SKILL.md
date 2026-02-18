@@ -11,13 +11,13 @@ Phase 2 of the one-shot-build workflow. Collaboratively break the project into e
 
 ## Pre-Conditions
 
-- `project-state.yaml` shows `workflow.current_phase: define_epics`
-- `docs/context/data-profile.md` and `docs/context/analyst-notes.md` exist
+- `kyros-agent-workflow/project-state.yaml` shows `workflow.current_phase: define_epics`
+- `kyros-agent-workflow/docs/context/data-profile.md` and `kyros-agent-workflow/docs/context/analyst-notes.md` exist
 
 ## Process
 
 ### Step 1: Read context
-Read `docs/context/data-profile.md` and `docs/context/analyst-notes.md` to understand the project.
+Read `kyros-agent-workflow/docs/context/data-profile.md` and `kyros-agent-workflow/docs/context/analyst-notes.md` to understand the project.
 
 ### Step 2: Propose epic breakdown
 Based on the data profile and analyst notes, propose a breakdown of the project into sequential epics. Present to the analyst:
@@ -40,10 +40,10 @@ Ask ONE question at a time to refine:
 - "Are there epics I'm missing?"
 
 ### Step 4: Write epic specs
-For each agreed epic, create a YAML file in `docs/epics/`:
+For each agreed epic, create a YAML file in `kyros-agent-workflow/docs/epics/`:
 
 ```yaml
-# docs/epics/01-data-loading.yaml
+# kyros-agent-workflow/docs/epics/01-data-loading.yaml
 name: "Data Loading & Validation"
 description: "Load client data files, validate against schema, apply quality thresholds"
 acceptance_criteria:
@@ -56,7 +56,7 @@ estimated_steps: 4
 ```
 
 ### Step 5: Update state
-- Add all epics to `project-state.yaml` under `epics:` with `status: pending`
+- Add all epics to `kyros-agent-workflow/project-state.yaml` under `epics:` with `status: pending`
 - Set the first epic as `workflow.current_epic`
 - Set `workflow.current_phase: plan`
 
@@ -65,7 +65,7 @@ Use AskUserQuestion: "Epic breakdown is defined. Ready to start planning the fir
 
 ### Step 7: Commit and log progress
 ```bash
-git add docs/epics/ project-state.yaml
+git add kyros-agent-workflow/docs/epics/ kyros-agent-workflow/project-state.yaml
 git commit -m "docs: define project epics (Phase 2 complete)"
 ```
 

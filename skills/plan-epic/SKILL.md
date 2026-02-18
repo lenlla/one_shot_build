@@ -11,14 +11,14 @@ Phase 3 of the one-shot-build workflow. Create a TDD plan for the current epic a
 
 ## Pre-Conditions
 
-- `project-state.yaml` shows `workflow.current_phase: plan`
+- `kyros-agent-workflow/project-state.yaml` shows `workflow.current_phase: plan`
 - `workflow.current_epic` is set
-- Epic spec exists in `docs/epics/`
+- Epic spec exists in `kyros-agent-workflow/docs/epics/`
 
 ## Process
 
 ### Step 1: Read the epic spec
-Read the current epic's YAML from `docs/epics/`. Understand the acceptance criteria.
+Read the current epic's YAML from `kyros-agent-workflow/docs/epics/`. Understand the acceptance criteria.
 
 ### Step 1.5: Search for relevant prior solutions
 
@@ -38,14 +38,14 @@ Present the step breakdown to the user for approval.
 
 ### Step 3: Write tests (TDD)
 For each step, write the test file FIRST:
-- Tests live in `tests/` mirroring `src/` structure
+- Tests live in `kyros-agent-workflow/tests/` mirroring `kyros-agent-workflow/src/` structure
 - Each test tests ONE behavior from the step's acceptance criteria
 - Tests should FAIL at this point (no implementation yet)
 
 ### Step 4: Run tests to confirm they fail
 Run the test suite to confirm all new tests fail as expected:
 ```bash
-pytest tests/ -v --tb=short
+pytest kyros-agent-workflow/tests/ -v --tb=short
 ```
 This confirms the tests are correctly written and will catch implementation.
 
@@ -56,21 +56,21 @@ git tag tdd-baseline-<epic-name>
 ```
 
 ### Step 6: Write the implementation plan
-Create `docs/plans/<epic-name>-plan.md` with:
+Create `kyros-agent-workflow/docs/plans/<epic-name>-plan.md` with:
 - Step-by-step implementation instructions
 - Which files to create/modify for each step
 - Expected behavior after each step
 - Reference to the test that validates each step
 
 ### Step 7: Update state
-- Add all steps to `project-state.yaml` under the current epic
+- Add all steps to `kyros-agent-workflow/project-state.yaml` under the current epic
 - Set the first step as `workflow.current_step`
 - Set `workflow.current_phase: build`
 - Set each step's `tests_pass: false` and `review_approved: false`
 
 ### Step 8: Commit and log progress
 ```bash
-git add tests/ docs/plans/ project-state.yaml
+git add kyros-agent-workflow/tests/ kyros-agent-workflow/docs/plans/ kyros-agent-workflow/project-state.yaml
 git commit -m "test: write TDD tests for epic <name>; plan: add implementation plan"
 ```
 

@@ -11,7 +11,7 @@ Phase 5 of the one-shot-build workflow. Run final quality checks and submit a PR
 
 ## Pre-Conditions
 
-- `project-state.yaml` shows `workflow.current_phase: submit`
+- `kyros-agent-workflow/project-state.yaml` shows `workflow.current_phase: submit`
 - All steps in the current epic have `tests_pass: true` and `review_approved: true`
 
 ## Process
@@ -34,14 +34,14 @@ Flag any findings but don't block the PR.
 
 ### Step 3: Promote cross-project learnings
 
-Review `docs/solutions/` for solution docs created during this epic.
+Review `kyros-agent-workflow/docs/solutions/` for solution docs created during this epic.
 
 For each doc where `applies_to.scope` is `universal` or the content is clearly not project-specific:
 
 1. Present to the user: "These solutions from this epic might help future projects:"
    - [title] → [category/filename]
 
-2. If the user approves promotion and `shared_knowledge_path` is configured in `.harnessrc`:
+2. If the user approves promotion and `shared_knowledge_path` is configured in `kyros-agent-workflow/.harnessrc`:
    - Copy the solution doc to `<shared_knowledge_path>/docs/solutions/<category>/`
    - Commit to the shared repo
    - Create a PR (or push directly if configured)
@@ -64,7 +64,7 @@ Generate a PR using `gh pr create`:
 
 ### Step 6: Commit state and log
 ```bash
-git add project-state.yaml claude-progress.txt
+git add kyros-agent-workflow/project-state.yaml kyros-agent-workflow/claude-progress.txt
 git commit -m "chore: mark epic <name> complete, advance to next"
 ```
 
