@@ -177,7 +177,15 @@ The team lead watches for circuit breaker signals:
 
 **What happens in the background:**
 - Solution docs are written automatically when the developer resolves tricky problems. These accumulate in `kyros-agent-workflow/docs/solutions/` as your project's knowledge base.
-- The reviewer flags solution docs that seem universally applicable (not just project-specific) for later promotion to the shared team knowledge repo.
+- The reviewer validates that any new solution docs have correct YAML frontmatter.
+
+### At the end of each epic
+
+When all steps in the epic are built and approved:
+
+1. The lead asks the developer: "Is this project-specific or team-wide?" for each solution doc created during the epic. Project-specific docs stay in `kyros-agent-workflow/docs/solutions/`; team-wide docs are flagged for promotion to the shared knowledge repo (which happens in the next phase).
+2. The lead updates `kyros-agent-workflow/project-state.yaml` to mark the phase as `submit`.
+3. The agent team is **cleaned up** — the developer and reviewer contexts are discarded. A fresh team is created for the next epic, so each epic starts with a clean slate.
 
 ---
 
