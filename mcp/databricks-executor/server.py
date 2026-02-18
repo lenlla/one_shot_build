@@ -1,7 +1,7 @@
 """
 Databricks Executor MCP Server
 Exposes Databricks operations as MCP tools for the one-shot-build harness.
-Reads configuration from .harnessrc in the current project directory.
+Reads configuration from kyros-agent-workflow/.harnessrc in the current project directory.
 """
 
 import os
@@ -17,9 +17,9 @@ app = Server("databricks-executor")
 
 def load_config() -> dict:
     """Load Databricks config from .harnessrc."""
-    harnessrc = Path.cwd() / ".harnessrc"
+    harnessrc = Path.cwd() / "kyros-agent-workflow" / ".harnessrc"
     if not harnessrc.exists():
-        raise FileNotFoundError("No .harnessrc found. Run /init first.")
+        raise FileNotFoundError("No kyros-agent-workflow/.harnessrc found. Run /init first.")
     with open(harnessrc) as f:
         config = yaml.safe_load(f)
     return config.get("databricks", {})

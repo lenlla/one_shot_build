@@ -13,7 +13,7 @@ PORT="${2:-8080}"
 # Create a temp directory with symlinks so the server can access both
 SERVE_DIR=$(mktemp -d)
 ln -s "$SCRIPT_DIR"/* "$SERVE_DIR/" 2>/dev/null || true
-ln -s "$PROJECT_ROOT/project-state.yaml" "$SERVE_DIR/project-state.yaml" 2>/dev/null || true
+ln -s "$PROJECT_ROOT/kyros-agent-workflow/project-state.yaml" "$SERVE_DIR/project-state.yaml" 2>/dev/null || true
 
 # Cleanup on exit
 trap "rm -rf $SERVE_DIR" EXIT
