@@ -7,6 +7,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+source "${PLUGIN_ROOT}/lib/state.sh"
 
 STEP="${1:?Usage: self-check.sh <step-name> <epic-name> [tdd-baseline-ref]}"
 EPIC="${2:?Usage: self-check.sh <step-name> <epic-name> [tdd-baseline-ref]}"
@@ -21,7 +23,7 @@ failed=0
 
 # Check 1: Tests pass
 echo "--- Running tests ---"
-if pytest tests/ -v --tb=short 2>&1; then
+if pytest "${HARNESS_DIR}/tests/" -v --tb=short 2>&1; then
     echo "  PASS: Tests"
     passed=$((passed + 1))
 else
@@ -42,7 +44,7 @@ echo ""
 # Check 3: Validate any new solution docs
 echo "--- Validating solution docs ---"
 SCHEMA="${SCRIPT_DIR}/../lib/solution-schema.yaml"
-new_docs=$(git diff --name-only --diff-filter=A HEAD -- 'docs/solutions/*.md' 'docs/solutions/**/*.md' 2>/dev/null || true)
+new_docs=$(git diff --name-only --diff-filter=A HEAD -- "${HARNESS_DIR}/docs/solutions/*.md" "${HARNESS_DIR}/docs/solutions/**/*.md" 2>/dev/null || true)
 if [[ -n "$new_docs" ]]; then
     doc_pass=true
     while IFS= read -r doc; do

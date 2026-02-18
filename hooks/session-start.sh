@@ -59,7 +59,7 @@ if [[ -f "$STATE_FILE" ]]; then
             ;;
     esac
 
-    context+="\\n\\nRead \`project-state.yaml\` for full state. Read \`CLAUDE.md\` for project guide."
+    context+="\\n\\nRead \`${HARNESS_DIR}/project-state.yaml\` for full state. Read \`CLAUDE.md\` for project guide."
 else
     context="## One-Shot Build Harness\\n\\n"
     context+="No project-state.yaml found in the current directory.\\n"
@@ -68,9 +68,9 @@ else
 fi
 
 # Warn if dangerous mode detected without VM isolation
-if [[ -f "$PROJECT_ROOT/.harnessrc" ]] && command -v yq &>/dev/null; then
-    skip_perms=$(yq eval ".execution.skip_permissions" "$PROJECT_ROOT/.harnessrc" 2>/dev/null)
-    vm_id=$(yq eval ".execution.vm_id" "$PROJECT_ROOT/.harnessrc" 2>/dev/null)
+if [[ -f "$PROJECT_ROOT/$HARNESS_DIR/.harnessrc" ]] && command -v yq &>/dev/null; then
+    skip_perms=$(yq eval ".execution.skip_permissions" "$PROJECT_ROOT/$HARNESS_DIR/.harnessrc" 2>/dev/null)
+    vm_id=$(yq eval ".execution.vm_id" "$PROJECT_ROOT/$HARNESS_DIR/.harnessrc" 2>/dev/null)
     if [[ "$skip_perms" == "true" && ( -z "$vm_id" || "$vm_id" == "null" ) ]]; then
         context+="\n\n⚠️ **WARNING:** skip_permissions is enabled but no vm_id is set.\n"
         context+="Ensure you are running on an isolated VM, not a developer machine.\n"

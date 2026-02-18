@@ -7,13 +7,17 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+source "${PLUGIN_ROOT}/lib/state.sh"
+
 BASELINE_REF="${1:-tdd-baseline}"
 
 # Get list of test files changed since baseline
-changed_tests=$(git diff --name-only "$BASELINE_REF" -- 'kyros-agent-workflow/tests/' '*/kyros-agent-workflow/tests/' '**/test_*' '**/*_test.*' 2>/dev/null || echo "")
+changed_tests=$(git diff --name-only "$BASELINE_REF" -- "${HARNESS_DIR}/tests/" "*/${HARNESS_DIR}/tests/" '**/test_*' '**/*_test.*' 2>/dev/null || echo "")
 
 # Also check staged changes
-staged_tests=$(git diff --cached --name-only "$BASELINE_REF" -- 'kyros-agent-workflow/tests/' '*/kyros-agent-workflow/tests/' '**/test_*' '**/*_test.*' 2>/dev/null || echo "")
+staged_tests=$(git diff --cached --name-only "$BASELINE_REF" -- "${HARNESS_DIR}/tests/" "*/${HARNESS_DIR}/tests/" '**/test_*' '**/*_test.*' 2>/dev/null || echo "")
 
 # Combine and deduplicate
 all_changed=$(echo -e "${changed_tests}\n${staged_tests}" | sort -u | grep -v '^$' || true)
