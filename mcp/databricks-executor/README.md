@@ -15,7 +15,7 @@ MCP server that exposes Databricks operations for the one-shot-build harness.
 
 ## Configuration
 
-Set in your project's `.harnessrc`:
+Set in your project's `kyros-agent-workflow/.harnessrc`:
 
 ```yaml
 databricks:

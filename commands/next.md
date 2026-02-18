@@ -3,7 +3,7 @@ description: "Advance to the next step in the workflow based on current state."
 disable-model-invocation: true
 ---
 
-Read project-state.yaml and determine the current phase. Then invoke the appropriate one-shot-build skill:
+Read kyros-agent-workflow/project-state.yaml and determine the current phase. Then invoke the appropriate one-shot-build skill:
 - If current_phase is gather_context: invoke one-shot-build:gather-context
 - If current_phase is define_epics: invoke one-shot-build:define-epics
 - If current_phase is plan: invoke one-shot-build:plan-epic
