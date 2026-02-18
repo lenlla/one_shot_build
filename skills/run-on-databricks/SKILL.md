@@ -44,7 +44,7 @@ Use `download_file` to pull any generated artifacts back to the project repo.
 
 ## Configuration
 
-Databricks settings are in `.harnessrc` under the `databricks:` key.
+Databricks settings are in `kyros-agent-workflow/.harnessrc` under the `databricks:` key.
 The token is read from the environment variable specified in `token_env_var`.
 
 ## Important

@@ -11,7 +11,7 @@ Manually invoke the reviewer agent to review the current step's work. This is us
 
 ## Process
 
-1. Read `project-state.yaml` to identify the current epic and step
+1. Read `kyros-agent-workflow/project-state.yaml` to identify the current epic and step
 2. Get the git diff since the last approved step (or TDD baseline)
 3. Dispatch the **reviewer** subagent with the Task tool:
    - Provide: the step spec, the diff, test results, review criteria

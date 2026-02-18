@@ -13,8 +13,8 @@ Review all solution docs for staleness, contradictions, and low-value entries. S
 
 ### Step 1: Scan both tiers
 
-Read `.harnessrc` for `shared_knowledge_path`. Scan:
-- `docs/solutions/` (project-level)
+Read `kyros-agent-workflow/.harnessrc` for `shared_knowledge_path`. Scan:
+- `kyros-agent-workflow/docs/solutions/` (project-level)
 - `<shared_knowledge_path>/docs/solutions/` (team-level, if configured)
 
 For each solution doc, extract YAML frontmatter.
@@ -29,7 +29,7 @@ Report: "Archived N superseded docs."
 ### Step 3: Flag stale docs
 
 Find active docs where `last_validated` is older than the staleness threshold
-(default: 90 days, configurable via `.harnessrc` under `pruning.staleness_threshold_days`).
+(default: 90 days, configurable via `kyros-agent-workflow/.harnessrc` under `pruning.staleness_threshold_days`).
 
 Present to the user as a checklist:
 
@@ -37,11 +37,11 @@ Present to the user as a checklist:
 ## Potentially Stale Solutions (last validated > 90 days ago)
 
 - [ ] **Null handling in target column** (last validated: 2026-01-15)
-      docs/solutions/model-library-issues/2026-01-15-null-target.md
+      kyros-agent-workflow/docs/solutions/model-library-issues/2026-01-15-null-target.md
       Action: [Still valid → refresh date] [Outdated → deprecate] [Skip]
 
 - [ ] **PySpark broadcast join OOM** (last validated: 2025-11-20)
-      docs/solutions/pyspark-issues/2025-11-20-broadcast-oom.md
+      kyros-agent-workflow/docs/solutions/pyspark-issues/2025-11-20-broadcast-oom.md
       Action: [Still valid → refresh date] [Outdated → deprecate] [Skip]
 ```
 
@@ -53,7 +53,7 @@ For each:
 ### Step 4: Check version compatibility
 
 Find active docs with `context.library_versions` or `context.tool_versions` constraints.
-Compare against the current project's `.harnessrc` profile.
+Compare against the current project's `kyros-agent-workflow/.harnessrc` profile.
 
 Flag docs where version constraints are incompatible with the current project:
 
@@ -95,7 +95,7 @@ Group 1: model_execution / runtime_error / null_handling
 ### Step 7: Commit changes
 
 ```bash
-git add docs/solutions/
+git add kyros-agent-workflow/docs/solutions/
 git commit -m "chore: prune knowledge base — archive N, refresh N, deprecate N"
 ```
 
@@ -109,7 +109,7 @@ git commit -m "chore: prune team knowledge — archive N, refresh N, deprecate N
 ## Configuration
 
 ```yaml
-# .harnessrc
+# kyros-agent-workflow/.harnessrc
 pruning:
   staleness_threshold_days: 90     # flag docs older than this
   auto_archive_superseded: true    # auto-archive without asking

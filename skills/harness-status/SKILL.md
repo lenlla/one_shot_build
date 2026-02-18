@@ -7,11 +7,11 @@ description: Use when the user wants to check the current workflow state, see wh
 
 ## Overview
 
-Display the current workflow state from `project-state.yaml` and suggest the next action.
+Display the current workflow state from `kyros-agent-workflow/project-state.yaml` and suggest the next action.
 
 ## Process
 
-1. **Read state file** — Read `project-state.yaml` from the project root
+1. **Read state file** — Read `kyros-agent-workflow/project-state.yaml` from the project root
 2. **Display current position** — Show: phase, epic, step
 3. **Show gate status** — For the current step: tests_pass, review_approved
 4. **Show epic progress** — How many steps completed vs total for current epic
@@ -46,6 +46,6 @@ Run `/command` to [do the next thing].
 
 ## Edge Cases
 
-- If no `project-state.yaml` exists: tell the user to run `/init`
+- If no `kyros-agent-workflow/project-state.yaml` exists: tell the user to run `/init`
 - If all epics are complete: congratulate and suggest final review
 - If circuit breaker is OPEN: warn and show the failure context
