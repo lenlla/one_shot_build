@@ -41,7 +41,7 @@ This project follows a phased workflow. You must complete each phase before adva
 - **Tests are immutable during build.** Do not modify test files written during planning.
 - **Commit after every step.** Descriptive messages. Code must be production-quality at every commit.
 - **Self-review before requesting review.** Check your own work first.
-- **Emit structured status blocks** after completing each step (see `docs/standards/status-block-format.md`).
+- **Emit structured status blocks** after completing each step (see `kyros-agent-workflow/docs/standards/status-block-format.md`).
 
 ## Anti-Patterns (DO NOT)
 
