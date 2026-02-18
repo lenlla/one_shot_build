@@ -20,9 +20,9 @@
 
 # Testing
 # testing:
-#   test_command: "pytest tests/ -v"
-#   lint_command: "ruff check src/ tests/"
-#   format_command: "ruff format src/ tests/"
+#   test_command: "pytest kyros-agent-workflow/tests/ -v"
+#   lint_command: "ruff check kyros-agent-workflow/src/ kyros-agent-workflow/tests/"
+#   format_command: "ruff format kyros-agent-workflow/src/ kyros-agent-workflow/tests/"
 
 # Project profile for relevance matching with cross-project learnings
 # The learnings-researcher agent uses this to filter solution docs

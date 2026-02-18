@@ -7,8 +7,8 @@ Run `/status` to see where things stand. Run `/next` to advance.
 
 ## Current State
 
-Read `project-state.yaml` for the canonical workflow state.
-Read `claude-progress.txt` for a log of what's been done.
+Read `kyros-agent-workflow/project-state.yaml` for the canonical workflow state.
+Read `kyros-agent-workflow/claude-progress.txt` for a log of what's been done.
 
 ## Workflow
 
@@ -24,16 +24,16 @@ This project follows a phased workflow. You must complete each phase before adva
 
 | File | Purpose |
 |------|---------|
-| `project-state.yaml` | Workflow state (phase, epic, step) |
-| `claude-progress.txt` | Activity log |
-| `.harnessrc` | Project-specific config overrides |
-| `docs/context/data-profile.md` | Data exploration results |
-| `docs/context/analyst-notes.md` | Analyst Q&A outcomes |
-| `docs/epics/*.yaml` | Epic definitions |
-| `docs/standards/coding-standards.md` | Coding conventions |
-| `docs/standards/definition-of-done.md` | DoD checklist |
-| `docs/standards/review-criteria.md` | What the reviewer checks |
-| `config/project-config.yaml` | Human decisions (mappings, predictors, etc.) |
+| `kyros-agent-workflow/project-state.yaml` | Workflow state (phase, epic, step) |
+| `kyros-agent-workflow/claude-progress.txt` | Activity log |
+| `kyros-agent-workflow/.harnessrc` | Project-specific config overrides |
+| `kyros-agent-workflow/docs/context/data-profile.md` | Data exploration results |
+| `kyros-agent-workflow/docs/context/analyst-notes.md` | Analyst Q&A outcomes |
+| `kyros-agent-workflow/docs/epics/*.yaml` | Epic definitions |
+| `kyros-agent-workflow/docs/standards/coding-standards.md` | Coding conventions |
+| `kyros-agent-workflow/docs/standards/definition-of-done.md` | DoD checklist |
+| `kyros-agent-workflow/docs/standards/review-criteria.md` | What the reviewer checks |
+| `kyros-agent-workflow/config/project-config.yaml` | Human decisions (mappings, predictors, etc.) |
 
 ## Rules
 
@@ -54,7 +54,7 @@ This project follows a phased workflow. You must complete each phase before adva
 
 ## Standards
 
-See `docs/standards/` for:
+See `kyros-agent-workflow/docs/standards/` for:
 - `coding-standards.md` — Style, conventions, shared utilities
 - `definition-of-done.md` — What "done" means for each step
 - `review-criteria.md` — What the reviewer checks
