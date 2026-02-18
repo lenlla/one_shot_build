@@ -13,6 +13,11 @@ Before you begin, make sure you have:
   ```
 - **yq** installed (`brew install yq` or `apt install yq`) for YAML processing
 - **Python 3.10+** for your project code
+- **Team knowledge repo** (optional) cloned locally for cross-project learnings:
+  ```bash
+  git clone <team-knowledge-repo-url> ~/repos/team-knowledge
+  ```
+  Then set `shared_knowledge_path` in your project's `kyros-agent-workflow/.harnessrc` to point to it.
 - **Docker** (optional) if running PySpark locally
 - **Databricks CLI** (optional) if executing on a Databricks cluster
 
