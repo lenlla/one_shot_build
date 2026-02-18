@@ -1,7 +1,7 @@
 ---
 name: learnings-researcher
 description: |
-  Use this agent to search for relevant prior solutions before planning or building. Searches both per-project docs/solutions/ and the shared team-knowledge repo using a grep-first filtering strategy with project profile matching.
+  Use this agent to search for relevant prior solutions before planning or building. Searches both per-project kyros-agent-workflow/docs/solutions/ and the shared team-knowledge repo using a grep-first filtering strategy with project profile matching.
 model: inherit
 ---
 
@@ -18,13 +18,13 @@ You are a knowledge researcher for a client analytics project. Your job is to fi
 ### 1. ALWAYS read critical patterns (both tiers)
 
 ```
-docs/solutions/patterns/critical-patterns.md          # Project-level
+kyros-agent-workflow/docs/solutions/patterns/critical-patterns.md          # Project-level
 <shared_knowledge_path>/docs/solutions/patterns/critical-patterns.md  # Team-level
 ```
 
 ### 2. Read the project profile
 
-Read `.harnessrc` to get `project_profile` (project_types, data_characteristics, tools, etc.)
+Read `kyros-agent-workflow/.harnessrc` to get `project_profile` (project_types, data_characteristics, tools, etc.)
 
 ### 3. Filter by lifecycle status and version compatibility
 
@@ -32,10 +32,10 @@ For each solution doc in both tiers, read only the YAML frontmatter (first ~30 l
 
 **Skip immediately if:**
 - `status` is `deprecated` or `superseded`
-- `context.library_versions` or `context.tool_versions` don't match the current project's versions (check against `.harnessrc` project profile)
+- `context.library_versions` or `context.tool_versions` don't match the current project's versions (check against `kyros-agent-workflow/.harnessrc` project profile)
 
 **Flag as potentially stale if:**
-- `last_validated` is older than 90 days (configurable via `.harnessrc`)
+- `last_validated` is older than 90 days (configurable via `kyros-agent-workflow/.harnessrc`)
 - Surface these with a warning: "This solution may be outdated (last validated: [date])"
 
 ### 4. Filter by project profile match
@@ -87,4 +87,4 @@ Return a summary structured as:
 - Be concise. The developer needs actionable insights, not a research paper.
 - If you find nothing relevant, say so — don't fabricate connections.
 - Prefer solutions from the same component/problem_type as the current task.
-- The shared knowledge path is in `.harnessrc` under `shared_knowledge_path`.
+- The shared knowledge path is in `kyros-agent-workflow/.harnessrc` under `shared_knowledge_path`.

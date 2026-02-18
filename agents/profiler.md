@@ -9,7 +9,7 @@ You are a data profiler for a client analytics project. Your job is to thoroughl
 
 ## What You Produce
 
-Generate `docs/context/data-profile.md` with these sections:
+Generate `kyros-agent-workflow/docs/context/data-profile.md` with these sections:
 
 ### 1. Overview
 - Row count
