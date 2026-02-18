@@ -185,7 +185,9 @@ When all steps in the epic are built and approved:
 
 1. The lead asks the developer: "Is this project-specific or team-wide?" for each solution doc created during the epic. Project-specific docs stay in `kyros-agent-workflow/docs/solutions/`; team-wide docs are flagged for promotion to the shared knowledge repo (which happens in the next phase).
 2. The lead updates `kyros-agent-workflow/project-state.yaml` to mark the phase as `submit`.
-3. The agent team is **cleaned up** — the developer and reviewer contexts are discarded. A fresh team is created for the next epic, so each epic starts with a clean slate.
+3. The **developer and reviewer agents are cleaned up** — their contexts are discarded. The lead (your main Claude Code session) continues and tells you to run `/submit`.
+
+The cross-epic loop is driven by you: after submitting a PR, you run `/next` again, which advances to the next epic's planning phase and eventually creates a fresh developer/reviewer team for that epic. Each epic gets a clean agent team, but the workflow state in `kyros-agent-workflow/project-state.yaml` carries continuity across epics.
 
 ---
 
