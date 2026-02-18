@@ -40,11 +40,13 @@ Start in an empty directory (or an existing repo where you want to add the harne
 
 The harness will ask for your project name, then create the full project structure:
 
-- `CLAUDE.md` — the project guide that Claude reads on every session
-- `project-state.yaml` — tracks your workflow progress
-- `.harnessrc` — project-specific configuration (edit this later for Databricks, team knowledge, etc.)
-- `docs/standards/` — coding standards, definition of done, review criteria
-- `docs/solutions/` — where learnings accumulate as you work
+- `CLAUDE.md` — the project guide that Claude reads on every session (lives at the project root)
+- `kyros-agent-workflow/project-state.yaml` — tracks your workflow progress
+- `kyros-agent-workflow/.harnessrc` — project-specific configuration (edit this later for Databricks, team knowledge, etc.)
+- `kyros-agent-workflow/docs/standards/` — coding standards, definition of done, review criteria
+- `kyros-agent-workflow/docs/solutions/` — where learnings accumulate as you work
+
+> **Note:** All project files live inside the `kyros-agent-workflow/` directory, with `CLAUDE.md` being the only file at the project root.
 
 After init completes, run `/next` to begin.
 
@@ -66,8 +68,8 @@ The harness will:
 **What you'll decide:** Answer the Q&A questions based on your domain knowledge. If the profile needs more exploration, say so.
 
 **What gets created:**
-- `docs/context/data-profile.md` — structured data exploration
-- `docs/context/analyst-notes.md` — your Q&A responses
+- `kyros-agent-workflow/docs/context/data-profile.md` — structured data exploration
+- `kyros-agent-workflow/docs/context/analyst-notes.md` — your Q&A responses
 
 ---
 
@@ -86,7 +88,7 @@ The harness will:
 **What you'll decide:** Shape the epic breakdown to match how you think about the project. This is the most important planning step — get it right here and everything downstream flows smoothly.
 
 **What gets created:**
-- `docs/epics/01-name.yaml`, `02-name.yaml`, etc. — one spec per epic
+- `kyros-agent-workflow/docs/epics/01-name.yaml`, `02-name.yaml`, etc. — one spec per epic
 
 ---
 
@@ -191,7 +193,7 @@ Opens a browser-based dashboard at `http://localhost:8080` showing all epics and
 
 ## Configuring Your Project
 
-Edit `.harnessrc` in your project root to customize behavior.
+Edit `kyros-agent-workflow/.harnessrc` in your project to customize behavior.
 
 ### Team knowledge sharing
 
@@ -259,7 +261,7 @@ The harness will guide you through Databricks execution when relevant, or you ca
 
 ## Maintaining Your Knowledge Base
 
-Over time, solution docs accumulate in `docs/solutions/`. Run the pruning command periodically to keep them healthy:
+Over time, solution docs accumulate in `kyros-agent-workflow/docs/solutions/`. Run the pruning command periodically to keep them healthy:
 
 ```
 /prune-knowledge
@@ -279,7 +281,7 @@ For fully hands-off execution, the harness can run on an isolated VM with `--dan
 
 **Never run in this mode on your local machine.**
 
-When configured for VM execution, add to `.harnessrc`:
+When configured for VM execution, add to `kyros-agent-workflow/.harnessrc`:
 
 ```yaml
 execution:
@@ -296,7 +298,7 @@ The session-start hook will warn you if `skip_permissions` is enabled without a 
 ## Troubleshooting
 
 **"No project-state.yaml found"**
-You're not in a harness project directory. Either `cd` to the right directory or run `/init` to start a new project.
+You're not in a harness project directory. Navigate to the correct project root (where `kyros-agent-workflow/project-state.yaml` exists) or run `/init` to start a new project.
 
 **Circuit breaker triggered**
 The harness stops when it detects the agent is stuck (same error 5+ times, no progress for 3+ iterations, or 5+ review rounds). Read the error context, decide whether to adjust the approach, and resume.
@@ -308,4 +310,4 @@ That's expected. Phase 3 writes tests that intentionally fail — they define wh
 Check the review feedback. Common causes: missing acceptance criteria, coding standard violations, or regressions in other tests. The harness escalates to you after 5 review rounds.
 
 **Dashboard not loading**
-Make sure you're running `/board` from within a project directory that has `project-state.yaml`. The dashboard reads that file to render the board.
+Make sure you're running `/board` from within a project directory that has `kyros-agent-workflow/project-state.yaml`. The dashboard reads that file to render the board.
