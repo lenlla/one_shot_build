@@ -199,26 +199,50 @@ The cross-epic loop is driven by you: after submitting a PR, you run `/next` aga
 
 The harness will:
 
-1. **Run the Definition of Done** — automated checks that all steps have passing tests and approved reviews, no TODO comments or debug prints remain, and `kyros-agent-workflow/claude-progress.txt` is up to date.
-2. **Run a quality scan** — checks for coding standard deviations, unused imports, missing type hints, and other drift.
-3. **Promote learnings** — if you have a shared team knowledge repo configured, universal solutions are offered for promotion.
-4. **Create a Pull Request** — with a summary of work, test results, and quality findings.
+1. **Read execution mode** from `kyros-agent-workflow/.harnessrc` (`execution.mode: interactive` or `autonomous`).
+2. **Run the Definition of Done** — automated checks that all steps have passing tests and approved reviews, no TODO comments or debug prints remain, and `kyros-agent-workflow/claude-progress.txt` is up to date.
+3. **Run a quality scan** — checks for coding standard deviations, unused imports, missing type hints, and other drift.
+4. **Promote learnings** — if you have a shared team knowledge repo configured, universal solutions are offered for promotion.
+5. **Create a Pull Request** — with a summary of work, test results, and quality findings.
+6. **Advance to next epic** — in autonomous mode, automatically continues to the next epic without waiting.
 
-**If the Definition of Done fails:** The harness shows you exactly which checks failed and asks how to proceed. DoD failures are **blocking** — no PR is created until they're resolved. Typically you'd go back and fix the issues (e.g., remove leftover TODOs, ensure all steps are marked as reviewed) and run `/submit` again.
+### How failures are handled
 
-**If the quality scan finds issues:** These are **non-blocking** — the findings are flagged in the PR description but don't prevent submission. Auto-fixable issues (unused imports, formatting) can be fixed and committed on the spot. Manual issues (missing type hints) are listed for you to address at your discretion.
+The behavior depends on your execution mode:
 
-**What you'll decide:** Review the PR and merge it when you're satisfied.
+**Interactive mode** (default):
+- **DoD failures are blocking.** The harness shows you exactly which checks failed and asks how to proceed. No PR is created until they're resolved. Typically you'd fix the issues and run `/submit` again.
+- **Quality scan findings are non-blocking.** Flagged in the PR description but don't prevent submission. Auto-fixable issues can be fixed on the spot; manual issues are listed for your discretion.
+
+**Autonomous mode** (VM execution):
+- **DoD failures are auto-fixed.** The harness attempts to resolve each failure automatically — removing TODO comments and debug prints, re-running missed reviews, writing missing progress log entries. It re-runs the DoD check after fixing. If it still fails after 3 attempts, it halts and logs the failure.
+- **Quality scan findings are auto-fixed where possible.** Unused imports and formatting violations are fixed and committed. Issues that can't be auto-fixed (e.g., missing type hints) are included in the PR description as known items.
+
+### What happens after the PR is created
+
+**Interactive mode:** The harness tells you "PR created. Once merged, run `/plan-epic` to start the next epic." You drive the loop by running `/next` when ready.
+
+**Autonomous mode:** The harness automatically invokes `/plan-epic` for the next epic and continues the full cycle without waiting. The entire project runs end-to-end:
+
+```
+Plan → Build → Submit → Plan → Build → Submit → ... → Done
+```
+
+When all epics are complete, the harness logs "All epics complete" and halts.
+
+**What you'll decide (interactive):** Review the PR and merge it when you're satisfied.
 
 ---
 
 ## Step 7: Repeat for Each Epic
 
-After merging, run `/next` again. The harness advances to the next epic and returns to Phase 3 (Plan). The cycle repeats:
+In interactive mode, after merging run `/next` again. The harness advances to the next epic and returns to Phase 3 (Plan). The cycle repeats:
 
 ```
 Plan → Build → Submit → (merge) → Plan → Build → Submit → ...
 ```
+
+In autonomous mode, this loop runs automatically — no human intervention needed between epics.
 
 When the final epic is submitted and merged, the project is complete.
 
