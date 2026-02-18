@@ -116,8 +116,8 @@ EOF
 }
 
 @test "detects contradiction with existing doc (same component+problem_type+root_cause)" {
-    mkdir -p "$TEST_DIR/docs/solutions/model-library-issues"
-    cat > "$TEST_DIR/docs/solutions/model-library-issues/old-doc.md" <<'EOF'
+    mkdir -p "$TEST_DIR/kyros-agent-workflow/docs/solutions/model-library-issues"
+    cat > "$TEST_DIR/kyros-agent-workflow/docs/solutions/model-library-issues/old-doc.md" <<'EOF'
 ---
 title: "Old null handling fix"
 date: 2026-02-01
@@ -161,7 +161,7 @@ tags: []
 Better fix.
 EOF
 
-    run bash "$SCRIPT" "$TEST_DIR/new-doc.md" "$SCHEMA" "$TEST_DIR/docs/solutions"
+    run bash "$SCRIPT" "$TEST_DIR/new-doc.md" "$SCHEMA" "$TEST_DIR/kyros-agent-workflow/docs/solutions"
     assert_success
     # Should pass validation but warn about overlap
     assert_output --partial "OVERLAP"

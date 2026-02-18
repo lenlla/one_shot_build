@@ -25,18 +25,18 @@ if command -v yq &>/dev/null && [[ -f "$STATE_FILE" ]]; then
 fi
 
 # --- Check 2: No TODO comments in src/ ---
-if [[ -d "src" ]]; then
-    todos=$(grep -rn "TODO\|FIXME\|HACK\|XXX" src/ 2>/dev/null || true)
+if [[ -d "${HARNESS_DIR}/src" ]]; then
+    todos=$(grep -rn "TODO\|FIXME\|HACK\|XXX" "${HARNESS_DIR}/src/" 2>/dev/null || true)
     if [[ -n "$todos" ]]; then
-        failures+=("TODO/FIXME comments found in src/:\n$todos")
+        failures+=("TODO/FIXME comments found in ${HARNESS_DIR}/src/:\n$todos")
     fi
 fi
 
 # --- Check 3: No debug print statements ---
-if [[ -d "src" ]]; then
-    debug_prints=$(grep -rn "print(" src/ --include="*.py" 2>/dev/null | grep -v "# noqa" || true)
+if [[ -d "${HARNESS_DIR}/src" ]]; then
+    debug_prints=$(grep -rn "print(" "${HARNESS_DIR}/src/" --include="*.py" 2>/dev/null | grep -v "# noqa" || true)
     if [[ -n "$debug_prints" ]]; then
-        failures+=("Debug print() statements found in src/:\n$debug_prints")
+        failures+=("Debug print() statements found in ${HARNESS_DIR}/src/:\n$debug_prints")
     fi
 fi
 

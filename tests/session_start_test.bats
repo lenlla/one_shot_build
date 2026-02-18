@@ -8,6 +8,9 @@ setup() {
     TEST_DIR="$(mktemp -d)"
     export PROJECT_ROOT="$TEST_DIR"
 
+    # Create the harness directory structure
+    mkdir -p "$TEST_DIR/kyros-agent-workflow"
+
     SCRIPT_DIR="${BATS_TEST_DIRNAME}/../hooks"
 }
 
@@ -17,7 +20,7 @@ teardown() {
 
 @test "session-start outputs valid JSON" {
     # Create a minimal state file
-    cat > "$TEST_DIR/project-state.yaml" <<'YAML'
+    cat > "$TEST_DIR/kyros-agent-workflow/project-state.yaml" <<'YAML'
 workflow:
   current_phase: "gather_context"
   current_epic: ""
@@ -33,7 +36,7 @@ YAML
 }
 
 @test "session-start includes current phase in output" {
-    cat > "$TEST_DIR/project-state.yaml" <<'YAML'
+    cat > "$TEST_DIR/kyros-agent-workflow/project-state.yaml" <<'YAML'
 workflow:
   current_phase: "build"
   current_epic: "01-data-loading"

@@ -14,9 +14,9 @@ setup() {
     git config user.name "Test"
 
     # Create initial test file and commit (simulates TDD phase)
-    mkdir -p tests
-    echo 'def test_example(): assert True' > tests/test_example.py
-    git add tests/test_example.py
+    mkdir -p kyros-agent-workflow/tests
+    echo 'def test_example(): assert True' > kyros-agent-workflow/tests/test_example.py
+    git add kyros-agent-workflow/tests/test_example.py
     git commit -q -m "test: add tests (TDD phase)"
 
     # Tag the TDD commit so the script can reference it
@@ -38,8 +38,8 @@ teardown() {
 
 @test "fails when a test file is modified during build" {
     # Modify a test file
-    echo 'def test_example(): assert False' > tests/test_example.py
-    git add tests/test_example.py
+    echo 'def test_example(): assert False' > kyros-agent-workflow/tests/test_example.py
+    git add kyros-agent-workflow/tests/test_example.py
 
     run bash "$SCRIPT" tdd-baseline
     assert_failure
@@ -49,9 +49,9 @@ teardown() {
 
 @test "passes when only src files are modified" {
     # Add/modify a source file, leave tests alone
-    mkdir -p src
-    echo 'def hello(): return "world"' > src/main.py
-    git add src/main.py
+    mkdir -p kyros-agent-workflow/src
+    echo 'def hello(): return "world"' > kyros-agent-workflow/src/main.py
+    git add kyros-agent-workflow/src/main.py
 
     run bash "$SCRIPT" tdd-baseline
     assert_success
@@ -59,8 +59,8 @@ teardown() {
 
 @test "fails when a new test file is added during build" {
     # Add a new test file (not allowed during build)
-    echo 'def test_new(): assert True' > tests/test_new.py
-    git add tests/test_new.py
+    echo 'def test_new(): assert True' > kyros-agent-workflow/tests/test_new.py
+    git add kyros-agent-workflow/tests/test_new.py
 
     run bash "$SCRIPT" tdd-baseline
     assert_failure

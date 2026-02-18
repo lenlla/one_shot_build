@@ -11,11 +11,11 @@ setup() {
     SCRIPT="${BATS_TEST_DIRNAME}/../hooks/definition-of-done.sh"
 
     # Create minimal project structure
-    mkdir -p "$TEST_DIR/tests" "$TEST_DIR/src"
-    echo "" > "$TEST_DIR/claude-progress.txt"
+    mkdir -p "$TEST_DIR/kyros-agent-workflow/tests" "$TEST_DIR/kyros-agent-workflow/src"
+    echo "" > "$TEST_DIR/kyros-agent-workflow/claude-progress.txt"
 
     # Create state file with completed steps
-    cat > "$TEST_DIR/project-state.yaml" <<'YAML'
+    cat > "$TEST_DIR/kyros-agent-workflow/project-state.yaml" <<'YAML'
 workflow:
   current_phase: "submit"
   current_epic: "01-data-loading"
@@ -48,7 +48,7 @@ teardown() {
 }
 
 @test "fails when state file has unapproved steps" {
-    cat > "$TEST_DIR/project-state.yaml" <<'YAML'
+    cat > "$TEST_DIR/kyros-agent-workflow/project-state.yaml" <<'YAML'
 workflow:
   current_phase: "submit"
   current_epic: "01-data-loading"
@@ -68,7 +68,7 @@ YAML
 }
 
 @test "fails when TODO comments found in src" {
-    echo '# TODO: fix this later' > "$TEST_DIR/src/main.py"
+    echo '# TODO: fix this later' > "$TEST_DIR/kyros-agent-workflow/src/main.py"
     git -C "$TEST_DIR" add -A
     git -C "$TEST_DIR" commit -q -m "add src"
 

@@ -8,6 +8,9 @@ setup() {
     TEST_DIR="$(mktemp -d)"
     export PROJECT_ROOT="$TEST_DIR"
 
+    # Create the harness directory structure
+    mkdir -p "$PROJECT_ROOT/kyros-agent-workflow"
+
     # Source the library
     source "${BATS_TEST_DIRNAME}/../lib/state.sh"
 }
@@ -25,7 +28,7 @@ teardown() {
 }
 
 @test "read_state reads current phase from state file" {
-    cat > "$PROJECT_ROOT/project-state.yaml" <<'YAML'
+    cat > "$PROJECT_ROOT/kyros-agent-workflow/project-state.yaml" <<'YAML'
 project:
   name: "Test Project"
 workflow:
@@ -39,7 +42,7 @@ YAML
 }
 
 @test "read_state reads nested epic status" {
-    cat > "$PROJECT_ROOT/project-state.yaml" <<'YAML'
+    cat > "$PROJECT_ROOT/kyros-agent-workflow/project-state.yaml" <<'YAML'
 project:
   name: "Test Project"
 workflow:
@@ -57,7 +60,7 @@ YAML
 # --- update_state tests ---
 
 @test "update_state sets a value in the state file" {
-    cat > "$PROJECT_ROOT/project-state.yaml" <<'YAML'
+    cat > "$PROJECT_ROOT/kyros-agent-workflow/project-state.yaml" <<'YAML'
 workflow:
   current_phase: "gather_context"
 YAML
@@ -71,7 +74,7 @@ YAML
 # --- get_current_phase tests ---
 
 @test "get_current_phase returns the current workflow phase" {
-    cat > "$PROJECT_ROOT/project-state.yaml" <<'YAML'
+    cat > "$PROJECT_ROOT/kyros-agent-workflow/project-state.yaml" <<'YAML'
 workflow:
   current_phase: "build"
 YAML
@@ -83,7 +86,7 @@ YAML
 # --- get_current_epic tests ---
 
 @test "get_current_epic returns the current epic" {
-    cat > "$PROJECT_ROOT/project-state.yaml" <<'YAML'
+    cat > "$PROJECT_ROOT/kyros-agent-workflow/project-state.yaml" <<'YAML'
 workflow:
   current_epic: "02-data-translation"
 YAML
@@ -95,7 +98,7 @@ YAML
 # --- get_current_step tests ---
 
 @test "get_current_step returns the current step" {
-    cat > "$PROJECT_ROOT/project-state.yaml" <<'YAML'
+    cat > "$PROJECT_ROOT/kyros-agent-workflow/project-state.yaml" <<'YAML'
 workflow:
   current_step: "step-03-type-casting"
 YAML
@@ -110,7 +113,7 @@ YAML
     run log_progress "Completed step-01 implementation"
     assert_success
 
-    run cat "$PROJECT_ROOT/claude-progress.txt"
+    run cat "$PROJECT_ROOT/kyros-agent-workflow/claude-progress.txt"
     assert_output --partial "Completed step-01 implementation"
 }
 
@@ -118,7 +121,7 @@ YAML
     run log_progress "Test message"
     assert_success
 
-    run cat "$PROJECT_ROOT/claude-progress.txt"
+    run cat "$PROJECT_ROOT/kyros-agent-workflow/claude-progress.txt"
     # Should contain ISO-like timestamp
     assert_output --regexp "[0-9]{4}-[0-9]{2}-[0-9]{2}"
 }
