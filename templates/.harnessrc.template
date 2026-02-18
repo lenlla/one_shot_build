@@ -1,0 +1,50 @@
+# .harnessrc — Per-project configuration overrides for one-shot-build harness
+# All values below are defaults. Uncomment and modify to override.
+
+# Circuit breaker thresholds
+# circuit_breaker:
+#   no_progress_threshold: 3
+#   same_error_threshold: 5
+#   max_review_rounds: 5
+#   output_decline_threshold: 70
+#   permission_denial_threshold: 2
+
+# Rate limiting
+# rate_limit:
+#   max_calls_per_hour: 100
+
+# Agent team configuration
+# agent_team:
+#   developer_model: "sonnet"
+#   reviewer_model: "sonnet"
+
+# Testing
+# testing:
+#   test_command: "pytest kyros-agent-workflow/tests/ -v"
+#   lint_command: "ruff check kyros-agent-workflow/src/ kyros-agent-workflow/tests/"
+#   format_command: "ruff format kyros-agent-workflow/src/ kyros-agent-workflow/tests/"
+
+# Project profile for relevance matching with cross-project learnings
+# The learnings-researcher agent uses this to filter solution docs
+# project_profile:
+#   project_types: [churn_modeling]     # What kind of project this is
+#   data_characteristics: [large_dataset, sparse_nulls, categorical_heavy]
+#   model_types: [logistic_regression, gradient_boosting]
+#   industry: insurance
+#   tools: [pyspark, databricks, custom_model_library]
+
+# Path to the shared team knowledge repository
+# shared_knowledge_path: "~/repos/team-knowledge"
+
+# Knowledge pruning configuration
+# pruning:
+#   staleness_threshold_days: 90
+#   auto_archive_superseded: true
+
+# Databricks integration
+# databricks:
+#   workspace_url: "https://adb-xxxx.azuredatabricks.net"
+#   cluster_id: "xxxx-xxxxxx-xxxxxxxx"
+#   default_catalog: "main"
+#   default_schema: "client_xyz"
+#   token_env_var: "DATABRICKS_TOKEN"

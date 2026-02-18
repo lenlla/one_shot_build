@@ -1,0 +1,8 @@
+{
+  "name": "one-shot-build-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

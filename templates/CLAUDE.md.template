@@ -1,0 +1,43 @@
+# {{PROJECT_NAME}}
+
+## Quick Start
+
+You are working on a client analytics project governed by the one-shot-build harness.
+Run `/status` to see where things stand.
+
+## Workflow
+
+This project follows a command-driven workflow:
+
+1. **Profile Data** (`/profile-data`) — Automated data profiling
+2. **Define Epics** (`/define-epics`) — Brainstorm and plan epics with the analyst
+3. **Execute Plan** (`/execute-plan <epics-dir>`) — Build epics interactively
+   - Or `/execute-plan-autonomously <epics-dir>` for fully autonomous execution
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `kyros-agent-workflow/claude-progress.txt` | Activity log |
+| `kyros-agent-workflow/.harnessrc` | Project-specific config overrides |
+| `kyros-agent-workflow/docs/context/data-profile-*.md` | Data profiling results |
+| `<epics-dir>/*.yaml` | Epic definitions |
+| `<epics-dir>/.execution-state.yaml` | Execution progress (created by execute-plan) |
+| `kyros-agent-workflow/docs/standards/coding-standards.md` | Coding conventions |
+| `kyros-agent-workflow/docs/standards/definition-of-done.md` | DoD checklist |
+| `kyros-agent-workflow/docs/standards/review-criteria.md` | What the reviewer checks |
+
+## Rules
+
+- **One step at a time.** Complete the current step before starting the next.
+- **Tests are immutable during build.** Do not modify test files written during planning.
+- **Commit after every step.** Descriptive messages. Code must be production-quality at every commit.
+- **Self-review before requesting review.** Check your own work first.
+
+## Anti-Patterns (DO NOT)
+
+- Modify tests to make them pass during build phase
+- Work on multiple steps simultaneously
+- Skip the review loop
+- Refactor working code that isn't part of the current step
+- Continue past completion signals

@@ -1,0 +1,31 @@
+{
+  "name": "one_shot_build",
+  "version": "1.0.0",
+  "description": "An agentic harness for Claude Code that enables fully autonomous execution of client predictive modeling and analysis projects.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lenlla/one_shot_build.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/lenlla/one_shot_build/issues"
+  },
+  "homepage": "https://github.com/lenlla/one_shot_build#readme",
+  "devDependencies": {
+    "bats": "^1.13.0",
+    "bats-assert": "^2.2.4",
+    "bats-support": "^0.3.0"
+  }
+}

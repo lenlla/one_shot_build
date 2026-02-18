@@ -1,0 +1,43 @@
+---
+title: "{{TITLE}}"
+date: {{DATE}}
+problem_type:       # enum: data_quality_issue, runtime_error, performance_issue, config_error, integration_issue, test_failure
+component:          # enum: data_loading, data_translation, model_execution, reporting, pipeline, testing, infrastructure
+severity:           # enum: critical, high, medium, low
+root_cause:         # enum: missing_validation, type_mismatch, memory_overflow, null_handling, config_mismatch, api_misuse, race_condition, schema_drift
+resolution_type:    # enum: code_fix, config_change, workaround, documentation, dependency_update
+
+applies_to:
+  scope:            # universal | conditional
+  project_types: [] # e.g., [churn_modeling, pricing, segmentation]
+  data_characteristics: [] # e.g., [large_dataset, sparse_nulls, categorical_heavy]
+  tools: []         # e.g., [pyspark, databricks, custom_model_library]
+
+# Lifecycle metadata (for pruning)
+status: active      # active | deprecated | superseded
+superseded_by: ""   # path to replacement doc (if superseded)
+last_validated: {{DATE}}  # last date confirmed still applicable
+context:
+  library_versions: {}  # e.g., { custom_model_library: ">=2.1" }
+  tool_versions: {}     # e.g., { pyspark: ">=3.4" }
+
+tags: []
+---
+
+## Problem
+[What happened]
+
+## Symptoms
+[Observable indicators]
+
+## What Didn't Work
+[Approaches tried and why they failed]
+
+## Solution
+[What fixed it, with code before/after]
+
+## Why This Works
+[Root cause explanation]
+
+## Prevention
+[How to avoid this in future]
