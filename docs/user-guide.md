@@ -123,28 +123,61 @@ For each epic, the harness will:
 /next
 ```
 
-This is where the agent team does the heavy lifting. The harness forms a two-agent team:
+This is where the agent team does the heavy lifting. The harness uses Claude Code's **agent team** feature to create a three-role team, where each agent runs in its own context window:
 
-- A **developer** who writes the implementation code
-- A **reviewer** who checks each step against the acceptance criteria
+- **Team lead** (you/Claude) — coordinates the workflow, populates the task list with steps from the implementation plan, monitors for stuck loops, and updates `kyros-agent-workflow/project-state.yaml` after each approved step. The lead operates in delegate mode — it coordinates but does not write code.
+- **Developer agent** — implements the code, one step at a time. Has its own context focused on the implementation plan, source code, and test output.
+- **Reviewer agent** — reviews each completed step. Has its own context focused on the diff, coding standards, and acceptance criteria. The reviewer is adversarial — its job is to catch problems, not rubber-stamp approvals.
 
-For each step, the developer:
-1. Reads the implementation plan
-2. Writes code to pass the tests
-3. Runs the test suite
-4. Commits the work
+Because each agent has its own context, they can focus deeply on their role without being cluttered by the other's work.
 
-Then the reviewer:
-1. Checks the code against review criteria
-2. Verifies tests pass and haven't been tampered with
-3. Approves or requests changes
+### The developer/reviewer loop
 
-This loop continues until all steps in the epic are complete and approved.
+For each step in the epic, the team runs a build/review loop:
 
-**What you'll decide:** Usually nothing — this phase runs autonomously. You'll only be pulled in if the harness hits a circuit breaker (e.g., the same error 5 times, or review cycles exceeding 5 rounds).
+```
+Developer                          Reviewer
+    │                                  │
+    ├─ Read implementation plan        │
+    ├─ Write code to pass tests        │
+    ├─ Run test suite                  │
+    ├─ Self-review & commit            │
+    ├─────── hand off ────────────────>│
+    │                                  ├─ Read the git diff
+    │                                  ├─ Check against review criteria
+    │                                  ├─ Verify tests pass independently
+    │                                  ├─ Check test immutability
+    │                                  │
+    │                          ┌───────┤
+    │                          │ Pass? │
+    │                          └───┬───┘
+    │                    No ───┐   │
+    │                          │   └─── Yes: Approve step
+    │<── specific feedback ────┘              │
+    ├─ Fix issues                             │
+    ├─ Re-commit                        Lead updates state
+    ├─────── hand off ────────────────>│
+    │                                  ├─ Re-review the fixes
+    │                                  └─ ...
+```
+
+When the reviewer requests changes, the feedback is specific: which criterion failed, what file and line is wrong, and what needs to change. The developer then fixes only what was flagged and hands off again. This loop repeats until the reviewer approves — or until it exceeds 5 rounds, at which point the lead halts and escalates to you.
+
+### What the lead monitors
+
+The team lead watches for circuit breaker signals:
+
+| Signal | Threshold | What happens |
+|--------|-----------|--------------|
+| No file changes | 3 iterations | Lead warns developer, suggests different approach |
+| Same error repeated | 5 times | Lead halts the team and escalates to you |
+| Review rounds exceeded | 5 rounds | Lead halts the team and escalates to you |
+
+**What you'll decide:** Usually nothing — this phase runs autonomously. You'll only be pulled in if the lead hits a circuit breaker.
 
 **What happens in the background:**
-- Solution docs are written automatically when the developer resolves tricky problems. These accumulate as your project's knowledge base.
+- Solution docs are written automatically when the developer resolves tricky problems. These accumulate in `kyros-agent-workflow/docs/solutions/` as your project's knowledge base.
+- The reviewer flags solution docs that seem universally applicable (not just project-specific) for later promotion to the shared team knowledge repo.
 
 ---
 
