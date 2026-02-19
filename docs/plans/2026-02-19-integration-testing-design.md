@@ -124,7 +124,7 @@ Prompt templates are cached by file hash of the skill definition. Only regenerat
 | Phase | Skill read | Key answers baked in |
 |---|---|---|
 | init | `harness-init/SKILL.md` | project name |
-| profile-data | `gather-context/SKILL.md` | data paths, business objective, target, exclusions, sign-off |
+| profile-data | `profile-data/SKILL.md` | data paths, business objective, target, exclusions, sign-off |
 | define-epics | `define-epics/SKILL.md` | epic preferences, directory name, approval |
 | execute-plan | `execute-plan/SKILL.md` | checkpoint approvals (proceed, approve plan, approve build) |
 

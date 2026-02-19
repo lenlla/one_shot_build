@@ -1030,7 +1030,7 @@ logger = logging.getLogger(__name__)
 
 PHASE_SKILL_MAP = {
     "init": "skills/harness-init/SKILL.md",
-    "profile-data": "skills/gather-context/SKILL.md",
+    "profile-data": "skills/profile-data/SKILL.md",
     "define-epics": "skills/define-epics/SKILL.md",
     "execute-plan": "skills/execute-plan/SKILL.md",
 }
@@ -2456,7 +2456,7 @@ logger = logging.getLogger(__name__)
 
 PHASE_SKILL_MAP = {
     "init": "skills/harness-init/SKILL.md",
-    "profile-data": "skills/gather-context/SKILL.md",
+    "profile-data": "skills/profile-data/SKILL.md",
     "define-epics": "skills/define-epics/SKILL.md",
     "execute-plan": "skills/execute-plan/SKILL.md",
 }
