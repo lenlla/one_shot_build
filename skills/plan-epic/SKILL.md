@@ -90,6 +90,11 @@ Create `kyros-agent-workflow/docs/plans/<epic-name>-plan.md` with the detailed i
 - Create: `kyros-agent-workflow/src/exact/path/to/file.py`
 - Test: `kyros-agent-workflow/tests/exact/path/to/test_file.py`
 
+**Relevant Solutions:** (from learnings-researcher findings)
+- `kyros-agent-workflow/docs/solutions/<path>` — <why it's relevant to this step>
+- `<shared_knowledge_path>/docs/solutions/<path>` — <why it's relevant>
+(omit if no solutions are relevant to this step)
+
 **Substep 1: Run test to verify it fails**
 Run: `pytest kyros-agent-workflow/tests/path/test_file.py::test_name -v`
 Expected: FAIL with `<specific error>`
@@ -114,6 +119,8 @@ Requirements:
 - Exact file paths always
 - Complete code (never "add validation here")
 - Exact commands with expected output
+- Map learnings-researcher findings to specific steps — include solution doc paths
+  in each step where the findings are relevant, not just in a general preamble
 
 ### Step 7: Commit and report
 

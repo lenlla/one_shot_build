@@ -84,10 +84,11 @@ You are implementing a single step of epic "<epic_name>" for a client analytics 
   bash <plugin_root>/hooks/self-check.sh <step_name> <epic_name> <tdd_baseline_tag>
 - Knowledge capture: if you resolve a notable problem, write a solution doc to
   kyros-agent-workflow/docs/solutions/<category>/ with validated YAML frontmatter
-- Before starting implementation, search the project and team solution docs for patterns
-  relevant to this step's component and problem domain. Look for docs matching the
-  component type, data characteristics, or error patterns you expect to encounter.
-  Apply any relevant patterns proactively — don't wait until you're stuck.
+- Read any solution docs listed under "Relevant Solutions" in your task section — these
+  were selected during planning as directly applicable to this step. Also search
+  kyros-agent-workflow/docs/solutions/ for additional patterns matching this step's
+  component type, data characteristics, or error patterns. Apply relevant patterns
+  proactively — don't wait until you're stuck.
 
 ## When Done
 
