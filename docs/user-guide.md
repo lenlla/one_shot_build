@@ -111,15 +111,17 @@ This is where the bulk of the work happens. The `/execute-plan` command orchestr
 
 **Interactive mode** (recommended for first use):
 ```
-/execute-plan <build-dir>
+/execute-plan kyros-agent-workflow/builds/v1
 ```
 Pauses at key checkpoints for your approval: after planning, after building, and after creating a PR. You stay in control.
 
 **Autonomous mode** (for VM execution):
 ```
-/execute-plan-autonomously <build-dir>
+/execute-plan-autonomously kyros-agent-workflow/builds/v1
 ```
 Runs the full cycle end-to-end with minimal human intervention. Auto-merges PRs and advances to the next epic automatically. Best used on an isolated VM with `--dangerously-skip-permissions`.
+
+The `<build-dir>` is the directory created by `/define-epics` in the previous step (e.g., `kyros-agent-workflow/builds/v1`, `kyros-agent-workflow/builds/churn-model`).
 
 ### Startup checks
 
