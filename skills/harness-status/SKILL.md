@@ -1,51 +1,78 @@
 ---
 name: harness-status
-description: Use when the user wants to check the current workflow state, see which phase/epic/step they're on, and what to do next.
+description: Use when the user wants to check the current workflow state, see active executions, and what to do next.
 ---
 
 # Harness Status
 
 ## Overview
 
-Display the current workflow state from `kyros-agent-workflow/project-state.yaml` and suggest the next action.
+Display the current execution state by scanning for `.execution-state.yaml` files and suggest the next action.
 
 ## Process
 
-1. **Read state file** — Read `kyros-agent-workflow/project-state.yaml` from the project root
-2. **Display current position** — Show: phase, epic, step
-3. **Show gate status** — For the current step: tests_pass, review_approved
-4. **Show epic progress** — How many steps completed vs total for current epic
-5. **Show overall progress** — How many epics completed vs total
-6. **Suggest next action** — Based on current phase, tell the user what command to run
+1. **Check for harness project** — Look for a `kyros-agent-workflow/` directory. If not found, tell the user to run `/init`.
+2. **Find execution states** — Source `<plugin_root>/lib/state.sh` and call `find_execution_states` to locate all `.execution-state.yaml` files.
+3. **Display status** — Based on what's found, show the appropriate output.
 
-## Output Format
+## Output: No Executions Found
+
+If no `.execution-state.yaml` files exist:
 
 ```
 ## Workflow Status
 
-**Phase:** [current_phase]
-**Epic:** [current_epic] ([completed_steps]/[total_steps] steps)
-**Step:** [current_step]
-
-### Gates
-- Tests: [pass/fail/pending]
-- Review: [approved/changes_requested/pending]
-
-### Epic Progress
-- [x] step-01-name (completed)
-- [x] step-02-name (completed)
-- [ ] step-03-name (in progress) <-- current
-- [ ] step-04-name (pending)
-
-### Overall
-[completed_epics]/[total_epics] epics complete
+No executions in progress.
 
 ### Next Action
-Run `/command` to [do the next thing].
+- Run `/profile-data` to profile your data
+- Run `/define-epics` to define project epics
+- Run `/execute-plan <epics-dir>` to start executing epics
+```
+
+## Output: Active Executions Found
+
+For each execution state found, call `execution_summary` and display:
+
+```
+## Workflow Status
+
+### Active Executions
+
+**`<epics-dir>`** — <summary from execution_summary>
+
+| Epic | Status |
+|------|--------|
+| data-loading | completed |
+| transformation | building (step 3/5) |
+| reporting | pending |
+
+### Next Action
+Run `/execute-plan <epics-dir>` to resume.
+```
+
+If multiple execution states exist, show all of them with their summaries.
+
+## Output: All Epics Complete
+
+If execution states exist but all epics in all of them are completed:
+
+```
+## Workflow Status
+
+All executions complete!
+
+| Execution | Epics | PRs |
+|-----------|-------|-----|
+| <epics-dir> | N epics | PR #1, PR #2, ... |
+
+### Next Action
+- Run `/define-epics` to start a new round of work
+- Run `/prune-knowledge` to clean up solution docs
 ```
 
 ## Edge Cases
 
-- If no `kyros-agent-workflow/project-state.yaml` exists: tell the user to run `/init`
-- If all epics are complete: congratulate and suggest final review
-- If circuit breaker is OPEN: warn and show the failure context
+- If no `kyros-agent-workflow/` directory exists: tell the user to run `/init`
+- If `kyros-agent-workflow/` exists but no execution states: project is initialized but no executions started yet
+- If circuit breaker is flagged in an execution state: warn and show the failure context

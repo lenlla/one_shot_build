@@ -103,5 +103,5 @@ When all steps in the epic are complete:
 | Permission denial | 2 times | Halt. Check permissions. |
 
 When halting:
-1. Log the issue to `kyros-agent-workflow/claude-progress.txt`
+1. Log the issue to `<epics_dir>/claude-progress.txt`
 2. Report the failure context to the orchestrator (which will surface it to the user)
