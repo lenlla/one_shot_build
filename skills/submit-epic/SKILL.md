@@ -28,11 +28,14 @@ bash <plugin_root>/hooks/definition-of-done.sh <epics_dir>
 
 **If it fails:**
 - **Interactive mode:** Report failures back to orchestrator for human review.
-- **Autonomous mode:** Attempt to fix each failure automatically:
-  - TODO comments: remove or replace with implementation
-  - Debug prints: remove
-  - Empty progress file: write epic summary
-  - After fixing, re-run DoD. If still failing after 3 attempts, halt and report to orchestrator.
+- **Autonomous mode:** Categorize each failure:
+  - **Superficial failures** (TODO comments, debug prints, empty progress file): fix directly — remove TODOs, remove debug prints, write epic summary. Re-run DoD. Retry up to 3 times.
+  - **Code-level failures** (test failures, implementation issues, regressions): do NOT attempt to fix. Report back to orchestrator immediately with:
+    - `needs_code_fix: true`
+    - The specific failure output (which tests failed, what the errors are)
+    - Any relevant file paths
+
+  If superficial fixes still fail after 3 attempts, report back to orchestrator with the failure details.
 
 ### Step 2: Run quality scan
 
@@ -50,12 +53,12 @@ Review `kyros-agent-workflow/docs/solutions/` for solution docs created during t
 
 For each doc where `applies_to.scope` is `universal`:
 - **Interactive mode:** Include in report for orchestrator to present to user.
-- **Autonomous mode:** If `shared_knowledge_path` is configured, automatically promote. Log to progress file.
+- **Autonomous mode:** If `shared_knowledge_path` is configured, automatically promote. Log to `<epics_dir>/claude-progress.txt`.
 
 ### Step 4: Commit final state
 
 ```bash
-git add kyros-agent-workflow/claude-progress.txt
+git add <epics_dir>/claude-progress.txt
 git commit -m "chore: finalize epic <name> for submission"
 ```
 
