@@ -7,6 +7,6 @@ Invoke the one-shot-build:execute-plan skill and follow it exactly as presented 
 
 Pass these parameters to the skill:
 - **mode:** autonomous
-- **epics_dir:** The first argument from the user (if provided). If not provided, the skill will ask for it.
+- **build_dir:** The first argument from the user (if provided). If not provided, the skill will ask for it.
 
 User arguments: $ARGUMENTS

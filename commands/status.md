@@ -13,19 +13,19 @@ Check the current workflow state by doing the following:
 
 3. **Check for data profiles:** Look for `kyros-agent-workflow/docs/context/data-profile-*.md` files. If found, list them.
 
-4. **Check for epic directories:** Look for directories containing `.yaml` epic spec files. List any found.
+4. **Check for build directories:** Look for `kyros-agent-workflow/builds/*/epic-specs/` directories containing `.yaml` epic spec files. List any found.
 
 5. **Present a summary** showing:
    - Active executions (if any)
    - Available data profiles (if any)
-   - Defined epic directories (if any)
+   - Defined build directories (if any)
    - Suggested next command based on what exists
 
 6. **Available commands reminder:**
    - `/init` — Scaffold a new project
    - `/profile-data` — Profile data tables
    - `/define-epics` — Brainstorm and define epics
-   - `/execute-plan <dir>` — Execute epics interactively
-   - `/execute-plan-autonomously <dir>` — Execute epics autonomously
+   - `/execute-plan <build-dir>` — Execute epics interactively
+   - `/execute-plan-autonomously <build-dir>` — Execute epics autonomously
    - `/board` — Open Kanban dashboard
    - `/prune-knowledge` — Review and cleanup solution docs
