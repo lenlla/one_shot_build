@@ -96,6 +96,12 @@ epics:
   ...
 ```
 
+Also create `<epics_dir>/claude-progress.txt` with a header line if it doesn't exist:
+
+```
+# Claude Progress Log — <epics_dir>
+```
+
 ## Main Loop
 
 For each epic with status `pending` or any in-progress status (planning, building, submitting):
@@ -148,7 +154,15 @@ Dispatch a **sub-agent** with the Task tool:
   - tdd_baseline_tag: `tdd-baseline-<epic-name>`
 - Wait for completion
 
-When sub-agent returns, capture the PR number/URL from its report.
+**If the sub-agent reports `needs_code_fix: true` (autonomous mode only):**
+
+Re-dispatch the build-step sub-agent to fix the issue:
+- Prompt: Invoke the build-step skill with the failure context — which tests failed, the error output, and the files involved. Instruct it to fix the failing tests without modifying test files.
+- Wait for completion
+
+Then re-dispatch submit-epic. This build→submit retry loop runs a maximum of 2 times. If submit still fails after 2 retries, halt and surface the issue to the user.
+
+When sub-agent returns successfully, capture the PR number/URL from its report.
 
 Update state: set epic status to `completed`, record PR reference, set completed_at timestamp.
 
@@ -179,7 +193,7 @@ Update state: record overall completion timestamp.
 
 Project execution is done."
 
-**Autonomous mode:** Log completion to `kyros-agent-workflow/claude-progress.txt`. "All epics complete. Execution finished."
+**Autonomous mode:** Log completion to `<epics_dir>/claude-progress.txt`. "All epics complete. Execution finished."
 
 ## Error Handling
 
