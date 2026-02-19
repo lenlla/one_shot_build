@@ -17,6 +17,7 @@ This skill is invoked by the `execute-plan` orchestrator as a sub-agent. The orc
 - **plan_path**: Path to the implementation plan (`kyros-agent-workflow/docs/plans/<epic>-plan.md`)
 - **epic_spec_path**: Path to the epic YAML spec
 - **tdd_baseline_tag**: Git tag for test immutability checks (e.g., `tdd-baseline-<epic-name>`)
+- **mode**: `interactive` or `autonomous` (determines whether replanning escalation is available)
 
 ## Process
 

@@ -94,7 +94,7 @@ The harness guides projects through 5 phases. Use `/next` to advance automatical
 | `gather-context` | 1 | Profile data and conduct analyst Q&A |
 | `define-epics` | 2 | Collaboratively break project into epics |
 | `plan-epic` | 3 | Create TDD plan, write tests first |
-| `build-step` | 4 | Agent team build/review loop |
+| `build-step` | 4 | Per-task agent build/review loop |
 | `submit-epic` | 5 | Run DoD checks, create PR, advance |
 
 ### Utility Skills
