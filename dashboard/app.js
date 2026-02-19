@@ -477,26 +477,33 @@
 
     /**
      * Compute an overall gate summary for an epic's steps.
-     * @param {object} steps — { step_key: { tests_pass, review_approved } }
+     * Uses status field as primary, gate booleans as supplementary.
+     * @param {object} steps — { step_key: { status, tests_pass, review_approved } }
      * @returns {{ id: string, label: string, cls: string }}
      */
     function computeGateSummary(steps) {
         var keys = Object.keys(steps);
         if (keys.length === 0) return { id: 'tests_pending', label: 'No steps', cls: 'gate-fail' };
 
+        var allComplete = true;
         var allTestsPass = true;
         var allReviewPass = true;
 
         keys.forEach(function (k) {
-            if (!steps[k].tests_pass) allTestsPass = false;
-            if (!steps[k].review_approved) allReviewPass = false;
+            var s = steps[k];
+            if (!isStepCompleted(s)) allComplete = false;
+            if (!s.tests_pass) allTestsPass = false;
+            if (!s.review_approved) allReviewPass = false;
         });
 
-        if (allTestsPass && allReviewPass) {
+        if (allComplete && allTestsPass && allReviewPass) {
             return { id: 'both_pass', label: 'All gates pass', cls: 'gate-pass' };
         }
         if (allTestsPass && !allReviewPass) {
             return { id: 'review_pending', label: 'Review pending', cls: 'gate-partial' };
+        }
+        if (allComplete) {
+            return { id: 'both_pass', label: 'All steps done', cls: 'gate-pass' };
         }
         return { id: 'tests_pending', label: 'Tests pending', cls: 'gate-fail' };
     }
