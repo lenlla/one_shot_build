@@ -122,22 +122,117 @@ execution_summary() {
         return 0
     fi
 
-    local total completed current_epic current_status current_step
+    local total completed current_epic current_status
     total=$(yq eval '.epics | length' "$state_file" 2>/dev/null || echo "0")
     completed=$(yq eval '.epics | to_entries | .[] | select(.value.status == "completed") | .key' "$state_file" 2>/dev/null | wc -l | tr -d ' ')
     current_epic=$(yq eval '.epics | to_entries | .[] | select(.value.status != "completed" and .value.status != "pending") | .key' "$state_file" 2>/dev/null | head -1)
 
     if [[ -n "$current_epic" ]]; then
         current_status=$(yq eval ".epics.\"${current_epic}\".status" "$state_file" 2>/dev/null || echo "")
-        current_step=$(yq eval ".epics.\"${current_epic}\".current_step" "$state_file" 2>/dev/null || echo "")
-        local steps_total
-        steps_total=$(yq eval ".epics.\"${current_epic}\".steps_total" "$state_file" 2>/dev/null || echo "")
-        if [[ -n "$current_step" && -n "$steps_total" && "$steps_total" != "null" ]]; then
-            echo "${completed}/${total} epics done, currently on '${current_epic}' step ${current_step}/${steps_total}"
+
+        # Check for step-level tracking
+        local steps_total steps_completed
+        steps_total=$(yq eval ".epics.\"${current_epic}\".steps | length" "$state_file" 2>/dev/null || echo "0")
+        steps_completed=$(yq eval ".epics.\"${current_epic}\".steps | to_entries | .[] | select(.value.status == \"completed\") | .key" "$state_file" 2>/dev/null | wc -l | tr -d ' ')
+
+        if [[ "$steps_total" -gt 0 ]]; then
+            echo "${completed}/${total} epics done, currently on '${current_epic}' step ${steps_completed}/${steps_total}"
         else
             echo "${completed}/${total} epics done, currently on '${current_epic}' (${current_status})"
         fi
     else
         echo "${completed}/${total} epics done"
     fi
+}
+
+# --- Step-level state operations ---
+
+# Read the status of a specific step within an epic
+# Usage: read_step_status "/path/to/epics/v1" "data-loading" "step-01"
+read_step_status() {
+    local epics_dir="$1"
+    local epic_name="$2"
+    local step_name="$3"
+    read_execution_state "$epics_dir" "epics.\"${epic_name}\".steps.\"${step_name}\".status"
+}
+
+# Update the status of a specific step within an epic
+# Usage: update_step_status "/path/to/epics/v1" "data-loading" "step-01" "completed"
+update_step_status() {
+    local epics_dir="$1"
+    local epic_name="$2"
+    local step_name="$3"
+    local status="$4"
+    update_execution_state "$epics_dir" "epics.\"${epic_name}\".steps.\"${step_name}\".status" "$status"
+    # Also update current_step pointer
+    if [[ "$status" == "in_progress" ]]; then
+        update_execution_state "$epics_dir" "epics.\"${epic_name}\".current_step" "$step_name"
+    fi
+}
+
+# Parse implementation plan and initialize step entries in execution state
+# Usage: init_steps_from_plan "/path/to/epics/v1" "data-loading" "/path/to/plan.md"
+init_steps_from_plan() {
+    local epics_dir="$1"
+    local epic_name="$2"
+    local plan_path="$3"
+    local state_file
+    state_file=$(execution_state_file "$epics_dir")
+
+    if [[ ! -f "$plan_path" ]]; then
+        echo "Error: Plan file not found at $plan_path" >&2
+        return 1
+    fi
+
+    # Extract task headings: "### Task N: [Name]" -> "task-n-name-slug"
+    local step_names
+    step_names=$(grep -E '^### Task [0-9]+:' "$plan_path" | sed -E 's/^### Task ([0-9]+): (.*)$/\1 \2/' | while read -r num name; do
+        # Convert to slug: lowercase, spaces to dashes, strip non-alphanumeric
+        local slug
+        slug=$(echo "$name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 ]//g' | tr ' ' '-' | sed 's/--*/-/g' | sed 's/-$//')
+        echo "task-${num}-${slug}"
+    done)
+
+    if [[ -z "$step_names" ]]; then
+        echo "Error: No task headings found in plan at $plan_path" >&2
+        return 1
+    fi
+
+    # Create step entries in the execution state
+    while IFS= read -r step_name; do
+        yq eval -i ".epics.\"${epic_name}\".steps.\"${step_name}\".status = \"pending\"" "$state_file"
+    done <<< "$step_names"
+}
+
+# Get the next pending step for an epic
+# Usage: get_next_pending_step "/path/to/epics/v1" "data-loading"
+get_next_pending_step() {
+    local epics_dir="$1"
+    local epic_name="$2"
+    local state_file
+    state_file=$(execution_state_file "$epics_dir")
+
+    if [[ ! -f "$state_file" ]]; then
+        echo ""
+        return 0
+    fi
+
+    local result
+    result=$(yq eval ".epics.\"${epic_name}\".steps | to_entries | .[] | select(.value.status != \"completed\") | .key" "$state_file" 2>/dev/null || true)
+    echo "$result" | head -1
+}
+
+# Increment the review round counter for a step
+# Usage: increment_review_rounds "/path/to/epics/v1" "data-loading" "step-01"
+increment_review_rounds() {
+    local epics_dir="$1"
+    local epic_name="$2"
+    local step_name="$3"
+    local state_file
+    state_file=$(execution_state_file "$epics_dir")
+
+    local current
+    current=$(yq eval ".epics.\"${epic_name}\".steps.\"${step_name}\".review_rounds // 0" "$state_file" 2>/dev/null)
+    local next=$((current + 1))
+    yq eval -i ".epics.\"${epic_name}\".steps.\"${step_name}\".review_rounds = ${next}" "$state_file"
 }
