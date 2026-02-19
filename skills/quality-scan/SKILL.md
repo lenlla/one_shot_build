@@ -16,7 +16,7 @@ Run a background quality check on the codebase. This can be invoked at any time 
 3. If findings exist, offer to fix them:
    - Auto-fixable issues (unused imports, formatting) → fix and commit
    - Manual issues (TODOs, missing type hints) → list for the user to address
-4. Log the scan to `<epics_dir>/claude-progress.txt` (if running within an execution context)
+4. Log the scan to `<build_dir>/claude-progress.txt` (if running within an execution context)
 
 ## When to Run
 

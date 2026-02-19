@@ -27,7 +27,7 @@ No executions in progress.
 ### Next Action
 - Run `/profile-data` to profile your data
 - Run `/define-epics` to define project epics
-- Run `/execute-plan <epics-dir>` to start executing epics
+- Run `/execute-plan <build-dir>` to start executing epics
 ```
 
 ## Output: Active Executions Found
@@ -39,7 +39,7 @@ For each execution state found, call `execution_summary` and display:
 
 ### Active Executions
 
-**`<epics-dir>`** — <summary from execution_summary>
+**`<build-dir>`** — <summary from execution_summary>
 
 | Epic | Status | Steps |
 |------|--------|-------|
@@ -48,7 +48,7 @@ For each execution state found, call `execution_summary` and display:
 | reporting | pending | — |
 
 ### Next Action
-Run `/execute-plan <epics-dir>` to resume.
+Run `/execute-plan <build-dir>` to resume.
 ```
 
 For epics in `building` status that have step-level state, show step detail:
@@ -68,7 +68,7 @@ All executions complete!
 
 | Execution | Epics | PRs |
 |-----------|-------|-----|
-| <epics-dir> | N epics | PR #1, PR #2, ... |
+| <build-dir> | N epics | PR #1, PR #2, ... |
 
 ### Next Action
 - Run `/define-epics` to start a new round of work
