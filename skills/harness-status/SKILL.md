@@ -41,15 +41,19 @@ For each execution state found, call `execution_summary` and display:
 
 **`<epics-dir>`** — <summary from execution_summary>
 
-| Epic | Status |
-|------|--------|
-| data-loading | completed |
-| transformation | building (step 3/5) |
-| reporting | pending |
+| Epic | Status | Steps |
+|------|--------|-------|
+| data-loading | completed | 3/3 |
+| transformation | building | 1/3 (task-2-validate-schema in review round 2) |
+| reporting | pending | — |
 
 ### Next Action
 Run `/execute-plan <epics-dir>` to resume.
 ```
+
+For epics in `building` status that have step-level state, show step detail:
+- Count of completed vs total steps
+- Name of current step and its review round count (if > 0)
 
 If multiple execution states exist, show all of them with their summaries.
 
