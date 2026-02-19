@@ -1,6 +1,6 @@
 ---
 name: define-epics
-description: Brainstorm what to build, gather context, and collaboratively define project epics. Opens with "What do you want to build today?" If data profiles are provided as context, asks targeted data questions. Saves epic YAML specs to an analyst-named directory.
+description: Brainstorm what to build, gather context, and collaboratively define project epics. Opens with "What do you want to build today?" If data profiles are provided as context, asks targeted data questions. Saves epic YAML specs to kyros-agent-workflow/builds/<name>/epic-specs/.
 ---
 
 # Define Epics
@@ -71,18 +71,18 @@ Ask ONE question at a time to refine:
 
 Iterate until the analyst approves the breakdown.
 
-### Step 7: Name the output directory
+### Step 7: Name the build
 
-Use AskUserQuestion: "What should I name the epics directory? This is where the epic specs will be saved and where `/execute-plan` will look for them. Examples: `epics/v1`, `epics/initial-model`, `epics/feature-x`"
+Use AskUserQuestion: "What should I name this build? Examples: `v1`, `initial-model`, `feature-x`"
 
-Create the directory.
+Create the build directory structure at `kyros-agent-workflow/builds/<name>/epic-specs/`.
 
 ### Step 8: Write epic specs
 
-For each agreed epic, create a YAML file in the named directory:
+For each agreed epic, create a YAML file in the build's epic-specs directory:
 
 ```yaml
-# <epics-dir>/01-<epic-name>.yaml
+# kyros-agent-workflow/builds/<name>/epic-specs/01-<epic-name>.yaml
 name: "[Epic Name]"
 description: "[Detailed description]"
 acceptance_criteria:
@@ -98,8 +98,8 @@ Number the files to preserve ordering (01-, 02-, etc.).
 ### Step 9: Commit
 
 ```bash
-git add <epics-dir>/
-git commit -m "docs: define epics in <epics-dir>"
+git add kyros-agent-workflow/builds/<name>/
+git commit -m "docs: define epics in builds/<name>"
 ```
 
-Tell the user: "Epics defined in `<epics-dir>/`. When you're ready to start building, run `/execute-plan <epics-dir>` (interactive) or `/execute-plan-autonomously <epics-dir>` (fully autonomous)."
+Tell the user: "Epics defined in `kyros-agent-workflow/builds/<name>/epic-specs/`. When you're ready to start building, run `/execute-plan kyros-agent-workflow/builds/<name>` or `/execute-plan-autonomously kyros-agent-workflow/builds/<name>`."
