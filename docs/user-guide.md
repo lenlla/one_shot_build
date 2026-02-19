@@ -372,14 +372,15 @@ circuit_breaker:
   max_review_rounds: 5
 ```
 
-### Agent team configuration
+### Agent configuration
 
-Choose which models the developer and reviewer agents use:
+Choose which models the developer, reviewer, and replanning agents use:
 
 ```yaml
-agent_team:
+agent:
   developer_model: "sonnet"
   reviewer_model: "sonnet"
+  replanning_model: "sonnet"
 ```
 
 ### Testing commands

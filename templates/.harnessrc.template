@@ -13,10 +13,11 @@
 # rate_limit:
 #   max_calls_per_hour: 100
 
-# Agent team configuration
-# agent_team:
+# Agent configuration
+# agent:
 #   developer_model: "sonnet"
 #   reviewer_model: "sonnet"
+#   replanning_model: "sonnet"
 
 # Testing
 # testing:
