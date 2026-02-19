@@ -212,6 +212,7 @@ In interactive mode, the circuit breaker always escalates to you directly — no
 Progress is tracked per step in `.execution-state.yaml`, so a resumed session picks up at the exact step that was interrupted — not from the beginning of the epic.
 
 **What happens in the background:**
+- Each developer agent searches project and team solution docs for relevant patterns before starting implementation. This means knowledge captured during earlier epics (or from other projects via the shared knowledge repo) is available to developers working on later steps — even though each developer agent starts with a fresh context.
 - Solution docs are written automatically when a developer resolves tricky problems. These accumulate in `kyros-agent-workflow/docs/solutions/` as your project's knowledge base.
 - The reviewer validates that any new solution docs have correct YAML frontmatter.
 

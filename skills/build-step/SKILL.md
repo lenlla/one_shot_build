@@ -25,6 +25,7 @@ This skill is invoked by the `execute-plan` orchestrator as a sub-agent. The orc
 
 Read the implementation plan from the provided path.
 Read `kyros-agent-workflow/.harnessrc` for project-specific configuration overrides (circuit breaker thresholds, model selection, test commands).
+Extract `shared_knowledge_path` from `.harnessrc` if configured. This path will be passed to developer sub-agents so they can search team-level solution docs.
 
 Source `<plugin_root>/lib/state.sh` and call `init_steps_from_plan` to parse the plan and create step entries in `.execution-state.yaml`:
 
@@ -70,6 +71,8 @@ You are implementing a single step of epic "<epic_name>" for a client analytics 
 - Coding standards: kyros-agent-workflow/docs/standards/coding-standards.md
 - Epic spec: <epic_spec_path>
 - TDD baseline tag: <tdd_baseline_tag>
+- Project solutions: kyros-agent-workflow/docs/solutions/
+- Team solutions: <shared_knowledge_path>/docs/solutions/ (if configured in .harnessrc)
 
 ## Rules
 
@@ -81,6 +84,11 @@ You are implementing a single step of epic "<epic_name>" for a client analytics 
   bash <plugin_root>/hooks/self-check.sh <step_name> <epic_name> <tdd_baseline_tag>
 - Knowledge capture: if you resolve a notable problem, write a solution doc to
   kyros-agent-workflow/docs/solutions/<category>/ with validated YAML frontmatter
+- Read any solution docs listed under "Relevant Solutions" in your task section — these
+  were selected during planning as directly applicable to this step. Also search
+  kyros-agent-workflow/docs/solutions/ for additional patterns matching this step's
+  component type, data characteristics, or error patterns. Apply relevant patterns
+  proactively — don't wait until you're stuck.
 
 ## When Done
 
@@ -164,6 +172,9 @@ Wait for the reviewer sub-agent to complete.
     - Do NOT modify test files (baseline: <tdd_baseline_tag>)
     - Run tests after fixing
     - Commit: "fix(<epic_name>): address review feedback for <step_name>"
+    - If the reviewer's feedback relates to a known pattern (data quality, type handling,
+      performance, etc.), check kyros-agent-workflow/docs/solutions/ for existing solutions
+      before implementing your fix.
     ```
 
     Then dispatch the reviewer again (step 2d). This is the review loop for a single step.
