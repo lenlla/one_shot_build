@@ -263,6 +263,85 @@ Opens a browser-based dashboard at `http://localhost:8080` showing all epics and
 
 ---
 
+## Agents and Sub-Agents
+
+This section documents every agent the harness creates, who creates it, and when it is torn down. Agents are created via Claude Code's Task tool; each runs in its own context window and loses all memory when torn down. Continuity between agents flows only through files (plans, tests, state YAML, solution docs, progress logs).
+
+### Step 2: Profile Data (`/profile-data`)
+
+| Agent | Created by | Purpose | Torn down |
+|-------|-----------|---------|-----------|
+| **Profiler** | `/profile-data` | Profiles a single data table and writes a `data-profile-<table>.md` report | After each table's profile is written |
+
+One profiler agent is dispatched per table, sequentially. Each is torn down before the next starts.
+
+### Step 3: Define Epics (`/define-epics`)
+
+| Agent | Created by | Purpose | Torn down |
+|-------|-----------|---------|-----------|
+| **Learnings-researcher** | `/define-epics` | Searches the shared knowledge base for similar past projects to inform the epic breakdown | After returning findings |
+
+This agent is only created if a shared knowledge repo is configured in `.harnessrc` and the user opts in. `/define-epics` itself runs in the main session — it is not a sub-agent.
+
+### Step 4: Execute Plan (`/execute-plan`)
+
+The execute-plan orchestrator runs in the main session for the entire execution. It dispatches sub-agents for each phase of each epic.
+
+#### Phase A: Plan
+
+| Agent | Created by | Purpose | Torn down |
+|-------|-----------|---------|-----------|
+| **Plan-epic** | Orchestrator | Creates the epic branch, breaks the epic into steps, writes TDD tests, tags the test baseline, writes the implementation plan | After reporting "planning complete" |
+| **Learnings-researcher** | Plan-epic | Searches local and shared knowledge base for patterns relevant to this epic | After returning findings to plan-epic |
+
+The learnings-researcher is nested inside plan-epic — it is created and torn down within the plan-epic agent's lifetime. When plan-epic is torn down, its understanding of the epic (why tests were designed a certain way, trade-offs considered) is lost. Only the written plan and tests survive into the build phase.
+
+#### Phase B: Build
+
+| Agent | Created by | Purpose | Torn down |
+|-------|-----------|---------|-----------|
+| **Build-step (team lead)** | Orchestrator | Coordinates the developer/reviewer loop, monitors circuit breakers, updates state. Does not write code (delegate mode). | After all steps pass review, or circuit breaker trips |
+| **Developer** | Build-step | Implements code one step at a time, runs tests, self-reviews, commits, writes solution docs | When build-step is torn down |
+| **Reviewer** | Build-step | Reviews each step's diff against review criteria, verifies tests pass, checks test immutability | When build-step is torn down |
+
+The developer and reviewer are teammates created by build-step. All three share the same lifetime — when build-step ends, the developer and reviewer are torn down with it. Each has its own context window focused on its role.
+
+#### Phase C: Submit
+
+| Agent | Created by | Purpose | Torn down |
+|-------|-----------|---------|-----------|
+| **Submit-epic** | Orchestrator | Runs Definition of Done, quality scan, promotes learnings, creates PR (and auto-merges in autonomous mode) | After reporting PR created/merged |
+
+If submit-epic reports a code-level DoD failure in autonomous mode, the orchestrator re-dispatches a **build-step** agent to fix the issue, then re-dispatches **submit-epic**. This retry loop runs up to 2 times before halting. Each re-dispatched agent is a fresh instance with no memory of prior attempts — the failure context is passed explicitly by the orchestrator.
+
+#### Lifecycle summary
+
+```
+/execute-plan <epics-dir>
+│
+├─ Epic 1
+│  ├─ Plan-epic ─────────────── created ──── torn down
+│  │  └─ Learnings-researcher ── created ─ torn down
+│  │
+│  ├─ Build-step (lead) ─────── created ──────────────── torn down
+│  │  ├─ Developer ───────────── created ──────────────── torn down
+│  │  └─ Reviewer ────────────── created ──────────────── torn down
+│  │
+│  └─ Submit-epic ───────────── created ──── torn down
+│
+├─ Epic 2
+│  ├─ Plan-epic ─────────────── created ──── torn down    (fresh instance)
+│  │  └─ Learnings-researcher ── created ─ torn down
+│  │  ...
+│  ...
+│
+Orchestrator ──────────────────── lives for entire execution ──────────────
+```
+
+No agent carries memory from one epic to the next. The developer that built epic 1 is not the same developer that builds epic 2. All cross-epic continuity comes from files on disk.
+
+---
+
 ## Configuring Your Project
 
 Edit `kyros-agent-workflow/.harnessrc` in your project to customize behavior.
