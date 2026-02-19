@@ -1,13 +1,13 @@
 ---
 name: build-step
-description: Run the agent team build/review loop for a single epic. Creates developer + reviewer sub-agents. Called by the execute-plan orchestrator — receives epic context as parameters.
+description: Coordinate the build/review loop for a single epic. Spawns a fresh developer + reviewer sub-agent per step. Called by the execute-plan orchestrator.
 ---
 
 # Build Step
 
 ## Overview
 
-Create an agent team to implement the epic's steps with a developer/reviewer loop.
+Coordinate implementation of an epic's steps. For each step, spawn a fresh developer sub-agent and reviewer sub-agent via the Task tool. This ensures each agent gets a clean context window focused on one task.
 
 ## Context (provided by orchestrator)
 
@@ -20,88 +20,233 @@ This skill is invoked by the `execute-plan` orchestrator as a sub-agent. The orc
 
 ## Process
 
-### Step 1: Read plan and configuration
+### Step 1: Read plan and initialize step state
 
 Read the implementation plan from the provided path.
 Read `kyros-agent-workflow/.harnessrc` for project-specific configuration overrides (circuit breaker thresholds, model selection, test commands).
 
-### Step 2: Create agent team
+Source `<plugin_root>/lib/state.sh` and call `init_steps_from_plan` to parse the plan and create step entries in `.execution-state.yaml`:
 
-Create an agent team with the following structure:
-
-**Team prompt:**
+```bash
+source <plugin_root>/lib/state.sh
+init_steps_from_plan "<epics_dir>" "<epic_name>" "<plan_path>"
 ```
-We are implementing epic "[epic-name]" for a client analytics project.
 
-The implementation plan is at <plan_path>.
-The epic spec is at <epic_spec_path>.
-Coding standards are at kyros-agent-workflow/docs/standards/coding-standards.md.
-Review criteria are at kyros-agent-workflow/docs/standards/review-criteria.md.
+If step entries already exist (resumed session), skip initialization — use the existing state.
 
-Spawn two teammates:
-1. A developer teammate to implement the steps
-2. A reviewer teammate to review each completed step
+### Step 2: Loop through steps
 
-Use delegate mode — I (the lead) will only coordinate, not write code.
+For each step (obtained via `get_next_pending_step`):
 
-Developer instructions:
-- Work through steps one at a time from the task list
-- For each step: implement, run tests, self-review, commit
-- After completing a step, emit a structured status block:
-  STATUS: COMPLETE
-  TASKS_COMPLETED: <n>
-  FILES_MODIFIED: <n>
-  TESTS: PASS | FAIL
-  WORK_TYPE: implementation
-  EXIT_SIGNAL: false
+#### 2a: Extract step context from plan
+
+Parse the plan file to extract the section for this specific step. The section starts at `### Task N: [Name]` and ends at the next `### Task` heading or end of file. This section contains:
+- Files to create/modify
+- Test file paths
+- Substep instructions
+- Expected test commands and output
+
+#### 2b: Update state
+
+```bash
+update_step_status "<epics_dir>" "<epic_name>" "<step_name>" "in_progress"
+```
+
+#### 2c: Dispatch developer sub-agent
+
+Dispatch a **developer sub-agent** with the Task tool:
+
+**Prompt:**
+```
+You are implementing a single step of epic "<epic_name>" for a client analytics project.
+
+## Your Task
+
+<paste the extracted step section from the plan>
+
+## Context Files (read these first)
+
+- Coding standards: kyros-agent-workflow/docs/standards/coding-standards.md
+- Epic spec: <epic_spec_path>
+- TDD baseline tag: <tdd_baseline_tag>
+
+## Rules
+
 - Do NOT modify any test files — they are immutable (baseline: <tdd_baseline_tag>)
-- Commit after every step with a descriptive message
 - If tests fail, fix the implementation (not the tests)
-- Knowledge capture:
-  - When you resolve a notable problem, write a solution doc to kyros-agent-workflow/docs/solutions/<category>/
-  - Include validated YAML frontmatter
-  - Use descriptive filenames: YYYY-MM-DD-brief-description.md
-- Before marking a step complete, run self-verification:
-  bash <plugin_root>/hooks/self-check.sh <step-name> <epic-name> <tdd_baseline_tag>
-- Fix any failures before proceeding
+- Run the test command after implementing to verify tests pass
+- Commit with a descriptive message: "feat(<epic_name>): implement <step description>"
+- Before finishing, run self-verification:
+  bash <plugin_root>/hooks/self-check.sh <step_name> <epic_name> <tdd_baseline_tag>
+- Knowledge capture: if you resolve a notable problem, write a solution doc to
+  kyros-agent-workflow/docs/solutions/<category>/ with validated YAML frontmatter
 
-Reviewer instructions:
-- After the developer completes a step, review the diff
-- Check against review criteria in kyros-agent-workflow/docs/standards/review-criteria.md
-- Run the full test suite yourself
-- Check test immutability (no test files changed since <tdd_baseline_tag>)
-- If changes needed: message the developer directly with specific feedback
-- If approved: mark the task as complete
-- Verify any new solution docs have valid YAML frontmatter
+## When Done
+
+Report back with:
+- FILES_MODIFIED: <list of files changed>
+- TESTS: PASS or FAIL (with output if FAIL)
+- COMMITS: <commit hash and message>
 ```
 
-### Step 3: Switch to delegate mode
+Wait for the developer sub-agent to complete.
 
-Press Shift+Tab to enter delegate mode (coordination only, no code).
+**If developer reports TESTS: FAIL** and has exhausted self-debugging (3 attempts with no progress): proceed to reviewer anyway — the reviewer will flag the failure and provide specific feedback for a retry.
 
-### Step 4: Monitor the loop
+#### 2d: Dispatch reviewer sub-agent
 
-Watch for:
-- **Circuit breaker signals:** No file changes for 3+ iterations, same error 5+ times
-- **Stuck loops:** Developer repeating the same approach without progress
-- **Review cycles:** If review exceeds 5 rounds, halt and escalate
+Dispatch a **reviewer sub-agent** with the Task tool:
 
-### Step 5: After all steps complete
+**Prompt:**
+```
+You are reviewing a single step of epic "<epic_name>" for a client analytics project.
 
-When all steps in the epic are complete:
-- Log progress: "Epic [name] build complete. All steps pass tests + review."
-- Clean up the agent team
-- Report back to the orchestrator: "Build complete for epic <name>. All steps implemented and reviewed."
+## What to Review
 
-## Circuit Breaker Behavior
+Run `git diff <tdd_baseline_tag>..HEAD -- . ':!*.test.*' ':!*test_*'` to see implementation changes.
+Run `git diff HEAD~1..HEAD` to see just this step's changes.
+
+## Review Criteria
+
+Read: kyros-agent-workflow/docs/standards/review-criteria.md
+
+## Checks
+
+1. Run the full test suite yourself: <test_command from .harnessrc or default>
+2. Verify test immutability: no test files changed since <tdd_baseline_tag>
+   Run: `git diff <tdd_baseline_tag> -- kyros-agent-workflow/tests/`
+   Expected: empty output
+3. Check against review criteria
+4. Verify any new solution docs have valid YAML frontmatter
+
+## Your Response
+
+If APPROVED:
+  REVIEW: APPROVED
+  SUMMARY: <one-line summary of what was implemented correctly>
+
+If CHANGES REQUESTED:
+  REVIEW: CHANGES_REQUESTED
+  ISSUES:
+  - FILE: <file path>
+    LINE: <line number>
+    CRITERION: <which review criterion failed>
+    PROBLEM: <what's wrong>
+    FIX: <specific fix needed>
+```
+
+Wait for the reviewer sub-agent to complete.
+
+#### 2e: Handle review result
+
+**If APPROVED:**
+- Update state: `update_step_status "<epics_dir>" "<epic_name>" "<step_name>" "completed"`
+- Log progress: `log_progress "<epics_dir>" "Step <step_name> approved by reviewer"`
+- Continue to the next step
+
+**If CHANGES_REQUESTED:**
+- Increment review rounds: `increment_review_rounds "<epics_dir>" "<epic_name>" "<step_name>"`
+- Check if review rounds exceed threshold (default 5 from `.harnessrc`):
+  - **If exceeded:** Trigger circuit breaker (see below)
+  - **If not exceeded:** Dispatch a **new developer sub-agent** with the reviewer's feedback:
+
+    ```
+    You are fixing review feedback for step "<step_name>" of epic "<epic_name>".
+
+    ## Reviewer Feedback
+
+    <paste the reviewer's ISSUES list>
+
+    ## Rules
+
+    - Fix ONLY the issues flagged by the reviewer
+    - Do NOT modify test files (baseline: <tdd_baseline_tag>)
+    - Run tests after fixing
+    - Commit: "fix(<epic_name>): address review feedback for <step_name>"
+    ```
+
+    Then dispatch the reviewer again (step 2d). This is the review loop for a single step.
+
+### Step 3: Circuit breaker monitoring
+
+Track across the step loop:
 
 | Signal | Threshold | Action |
 |--------|-----------|--------|
-| No file changes | 3 iterations | Warn developer, suggest different approach |
-| Same error repeated | 5 times | Halt. Report to orchestrator: "Stuck loop detected." |
-| Review rounds exceeded | 5 rounds | Halt. Report to orchestrator: "Review loop exceeded." |
-| Permission denial | 2 times | Halt. Check permissions. |
+| No file changes after developer dispatch | 3 consecutive dispatches | Log warning, include in next developer prompt: "Your previous attempts produced no file changes. Try a fundamentally different approach." |
+| Same error repeated | 5 times across dispatches | Halt. Trigger replanning escalation (see Step 4) or report to orchestrator. |
+| Review rounds exceeded | 5 rounds for a single step | Halt. Trigger replanning escalation (see Step 4) or report to orchestrator. |
 
-When halting:
-1. Log the issue to `<epics_dir>/claude-progress.txt`
-2. Report the failure context to the orchestrator (which will surface it to the user)
+When halting without replanning:
+1. Log the issue: `log_progress "<epics_dir>" "CIRCUIT BREAKER: <signal> for step <step_name>"`
+2. Report the failure context to the orchestrator
+
+### Step 4: Replanning escalation (autonomous mode only)
+
+When the circuit breaker trips due to persistent test failures (same error repeated, or review rounds exceeded where the core issue is that the tests themselves appear wrong), and the execution mode is `autonomous`:
+
+Dispatch a **replanning sub-agent** with the Task tool:
+
+**Prompt:**
+```
+You are a replanning agent for epic "<epic_name>". The build has stalled on step "<step_name>".
+
+## Problem
+
+The developer agent has been unable to pass the tests for this step after multiple attempts.
+The circuit breaker tripped due to: <reason>
+
+## Error Context
+
+<paste the last developer's test output and the last reviewer's feedback>
+
+## Your Job
+
+Analyze whether the tests are genuinely wrong. Tests may be wrong if:
+- They test behavior that contradicts the epic's acceptance criteria
+- They assume an implementation approach that is impossible given the data/dependencies
+- They have a logic error (off-by-one, wrong assertion, wrong fixture)
+- They assume step N would be implemented a certain way, but the actual implementation took a different valid approach
+
+If the tests ARE correct and the implementation is simply difficult:
+  VERDICT: TESTS_CORRECT
+  SUGGESTION: <suggest a different implementation approach for the developer>
+
+If the tests are WRONG and need modification:
+  VERDICT: TESTS_WRONG
+  CHANGES:
+  - FILE: <test file path>
+    CURRENT: <the problematic test code>
+    PROPOSED: <the corrected test code>
+    JUSTIFICATION: <why this change is necessary, referencing the epic's acceptance criteria>
+
+## Rules
+
+- You are NOT the developer. Do not write implementation code.
+- Only propose test changes that are clearly justified by the epic spec.
+- Never weaken test coverage — only correct wrong assertions.
+- Read the epic spec at <epic_spec_path> to verify your reasoning.
+```
+
+**Handle replanning result:**
+
+**If VERDICT: TESTS_CORRECT:**
+- Dispatch a new developer sub-agent with the replanning agent's suggested approach
+- Resume the review loop (one more attempt before halting for good)
+- If this attempt also fails, halt and report to orchestrator
+
+**If VERDICT: TESTS_WRONG:**
+- Apply the proposed test changes
+- Create a new TDD baseline tag: `tdd-baseline-<epic-name>-v<N>` (increment N)
+- Update the `tdd_baseline_tag` used by subsequent developer/reviewer agents
+- Log prominently: `log_progress "<epics_dir>" "REPLAN: Tests modified for step <step_name>. New baseline: <new_tag>. Justification: <summary>"`
+- Commit: `git commit -m "fix(<epic_name>): correct tests for <step_name> per replanning agent"`
+- Resume building from the current step with the corrected tests
+
+**Replanning limit:** Only one replanning escalation per step. If the replanning agent's fix doesn't resolve the issue, halt and report to the orchestrator.
+
+### Step 5: After all steps complete
+
+When `get_next_pending_step` returns empty (all steps completed):
+- Log: `log_progress "<epics_dir>" "Epic <epic_name> build complete. All steps pass tests + review."`
+- Report back to the orchestrator: "Build complete for epic <epic_name>. All steps implemented and reviewed."
