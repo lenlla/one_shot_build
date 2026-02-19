@@ -27,7 +27,7 @@ Before you begin, make sure you have:
 |---------|-------------|
 | `/init` | Scaffold a new project |
 | `/status` | Show where you are and what to do |
-| `/profile-data [paths]` | Profile data tables and conduct analyst Q&A |
+| `/profile-data [paths]` | Profile data tables |
 | `/define-epics [context-files]` | Collaboratively break the project into epics |
 | `/execute-plan <epics-dir>` | Execute epics interactively (plan, build, submit loop) |
 | `/execute-plan-autonomously <epics-dir>` | Execute epics with minimal human intervention |
@@ -514,6 +514,12 @@ That's expected. The plan phase writes tests that intentionally fail — they de
 
 **Reviewer keeps requesting changes**
 Check the review feedback. Common causes: missing acceptance criteria, coding standard violations, or regressions in other tests. The harness escalates to you after 5 review rounds.
+
+**Replanning triggered (autonomous mode)**
+The replanning agent was dispatched because the circuit breaker tripped on persistent test failures. Check `<epics-dir>/claude-progress.txt` for the `REPLAN:` log entry, which includes the justification for any test changes. A new TDD baseline tag (`tdd-baseline-<epic-name>-v2`) was created. If you disagree with the test changes, revert the commit and re-run the build interactively.
+
+**Build resumed at wrong step**
+If the build seems to be re-doing completed work, check `.execution-state.yaml` for the step-level status. Steps marked `completed` will be skipped. If step state is missing or corrupt, delete the `steps:` block for that epic and re-run — the coordinator will re-initialize steps from the plan.
 
 **Dashboard not loading**
 Make sure you're running `/board` from within a project directory that has an active execution. The dashboard reads `.execution-state.yaml` to render the board.
