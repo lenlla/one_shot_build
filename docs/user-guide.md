@@ -23,16 +23,18 @@ Before you begin, make sure you have:
 
 ## Quick Reference
 
-| Command | What it does |
-|---------|-------------|
-| `/init` | Scaffold a new project |
-| `/status` | Show where you are and what to do |
-| `/profile-data [paths]` | Profile data tables |
-| `/define-epics [context-files]` | Collaboratively break the project into epics |
-| `/execute-plan <build-dir>` | Execute epics interactively (plan, build, submit loop) |
-| `/execute-plan-autonomously <build-dir>` | Execute epics with minimal human intervention |
-| `/board` | Open the Kanban dashboard in your browser |
-| `/prune-knowledge` | Clean up old solution docs |
+
+| Command                                  | What it does                                           |
+| ---------------------------------------- | ------------------------------------------------------ |
+| `/init`                                  | Scaffold a new project                                 |
+| `/status`                                | Show where you are and what to do                      |
+| `/profile-data [paths]`                  | Profile data tables                                    |
+| `/define-epics [context-files]`          | Collaboratively break the project into epics           |
+| `/execute-plan <build-dir>`              | Execute epics interactively (plan, build, submit loop) |
+| `/execute-plan-autonomously <build-dir>` | Execute epics with minimal human intervention          |
+| `/board`                                 | Open the Kanban dashboard in your browser              |
+| `/prune-knowledge`                       | Clean up old solution docs                             |
+
 
 You can always type `/status` to see your current phase and suggested next action.
 
@@ -76,6 +78,7 @@ The harness will:
 **What you'll decide:** Which tables to profile, and whether to overwrite or version any existing profiles.
 
 **What gets created:**
+
 - `kyros-agent-workflow/docs/context/data-profile-<table>.md` — structured data exploration (one per table)
 
 ---
@@ -99,6 +102,7 @@ The harness will:
 **What you'll decide:** Shape the epic breakdown to match how you think about the project. This is the most important planning step — get it right here and everything downstream flows smoothly.
 
 **What gets created:**
+
 - `kyros-agent-workflow/builds/<name>/epic-specs/01-name.yaml`, `02-name.yaml`, etc. — one spec per epic
 
 ---
@@ -110,18 +114,22 @@ This is where the bulk of the work happens. The `/execute-plan` command orchestr
 ### Choose your execution mode
 
 **Interactive mode** (recommended for first use):
+
 ```
 /execute-plan kyros-agent-workflow/builds/v1
 ```
+
 Pauses at key checkpoints for your approval: after planning, after building, and after creating a PR. You stay in control.
 
 **Autonomous mode** (for VM execution):
+
 ```
 /execute-plan-autonomously kyros-agent-workflow/builds/v1
 ```
+
 Runs the full cycle end-to-end with minimal human intervention. Auto-merges PRs and advances to the next epic automatically. Best used on an isolated VM with `--dangerously-skip-permissions`.
 
-The `<build-dir>` is the directory created by `/define-epics` in the previous step (e.g., `kyros-agent-workflow/builds/v1`, `kyros-agent-workflow/builds/churn-model`).
+The `<build-dir>` is the directory created by `/define-epics` in the previous step (e.g., `kyros-agent-workflow/builds/v1`, `kyros-agent-workflow/builds/initial-model`).
 
 ### Startup checks
 
@@ -191,11 +199,13 @@ When the reviewer requests changes, the coordinator spawns a **new developer age
 
 The coordinator watches for stuck loops:
 
-| Signal | Threshold | What happens |
-|--------|-----------|--------------|
-| No file changes | 3 developer dispatches | Coordinator warns the next developer to try a different approach |
-| Same error repeated | 5 times | Circuit breaker triggers (see replanning below) |
-| Review rounds exceeded | 5 rounds | Circuit breaker triggers (see replanning below) |
+
+| Signal                 | Threshold              | What happens                                                     |
+| ---------------------- | ---------------------- | ---------------------------------------------------------------- |
+| No file changes        | 3 developer dispatches | Coordinator warns the next developer to try a different approach |
+| Same error repeated    | 5 times                | Circuit breaker triggers (see replanning below)                  |
+| Review rounds exceeded | 5 rounds               | Circuit breaker triggers (see replanning below)                  |
+
 
 **Replanning escalation (autonomous mode only):**
 
@@ -214,6 +224,7 @@ In interactive mode, the circuit breaker always escalates to you directly — no
 Progress is tracked per step in `.execution-state.yaml`, so a resumed session picks up at the exact step that was interrupted — not from the beginning of the epic.
 
 **What happens in the background:**
+
 - Each developer agent searches project and team solution docs for relevant patterns before starting implementation. This means knowledge captured during earlier epics (or from other projects via the shared knowledge repo) is available to developers working on later steps — even though each developer agent starts with a fresh context.
 - Solution docs are written automatically when a developer resolves tricky problems. These accumulate in `kyros-agent-workflow/docs/solutions/` as your project's knowledge base.
 - The reviewer validates that any new solution docs have correct YAML frontmatter.
@@ -229,11 +240,13 @@ The orchestrator dispatches a **submit-epic sub-agent** that:
 
 **How failures are handled:**
 
-| | Interactive mode | Autonomous mode |
-|---|---|---|
-| **DoD failures (superficial)** | Blocking — shows which checks failed, asks how to proceed | Auto-fix — removes TODOs, debug prints, re-runs checks (up to 3 attempts) |
-| **DoD failures (code-level)** | Blocking — shows which tests failed, asks how to proceed | Re-dispatches the build-step agent with the failure context to fix the code, then re-runs submit (up to 2 retries before halting) |
-| **Quality scan** | Non-blocking — flagged in PR description | Auto-fix where possible — imports, formatting committed; rest noted in PR |
+
+|                                | Interactive mode                                          | Autonomous mode                                                                                                                   |
+| ------------------------------ | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **DoD failures (superficial)** | Blocking — shows which checks failed, asks how to proceed | Auto-fix — removes TODOs, debug prints, re-runs checks (up to 3 attempts)                                                         |
+| **DoD failures (code-level)**  | Blocking — shows which tests failed, asks how to proceed  | Re-dispatches the build-step agent with the failure context to fix the code, then re-runs submit (up to 2 retries before halting) |
+| **Quality scan**               | Non-blocking — flagged in PR description                  | Auto-fix where possible — imports, formatting committed; rest noted in PR                                                         |
+
 
 **After the PR:**
 
@@ -242,7 +255,7 @@ The orchestrator dispatches a **submit-epic sub-agent** that:
 
 ### Between epics
 
-**Interactive mode:** The orchestrator asks "Completed N of M epics. Next up: '<next-epic>'. Proceed?"
+**Interactive mode:** The orchestrator asks "Completed N of M epics. Next up: '\<next-epic\>'. Proceed?"
 
 **Autonomous mode:** Continues immediately.
 
@@ -281,17 +294,21 @@ This section documents every agent the harness creates, who creates it, and when
 
 ### Step 2: Profile Data (`/profile-data`)
 
-| Agent | Created by | Purpose | Torn down |
-|-------|-----------|---------|-----------|
+
+| Agent        | Created by      | Purpose                                                                    | Torn down                             |
+| ------------ | --------------- | -------------------------------------------------------------------------- | ------------------------------------- |
 | **Profiler** | `/profile-data` | Profiles a single data table and writes a `data-profile-<table>.md` report | After each table's profile is written |
+
 
 One profiler agent is dispatched per table, sequentially. Each is torn down before the next starts.
 
 ### Step 3: Define Epics (`/define-epics`)
 
-| Agent | Created by | Purpose | Torn down |
-|-------|-----------|---------|-----------|
+
+| Agent                    | Created by      | Purpose                                                                                   | Torn down                |
+| ------------------------ | --------------- | ----------------------------------------------------------------------------------------- | ------------------------ |
 | **Learnings-researcher** | `/define-epics` | Searches the shared knowledge base for similar past projects to inform the epic breakdown | After returning findings |
+
 
 This agent is only created if a shared knowledge repo is configured in `.harnessrc` and the user opts in. `/define-epics` itself runs in the main session — it is not a sub-agent.
 
@@ -301,30 +318,36 @@ The execute-plan orchestrator runs in the main session for the entire execution.
 
 #### Phase A: Plan
 
-| Agent | Created by | Purpose | Torn down |
-|-------|-----------|---------|-----------|
-| **Plan-epic** | Orchestrator | Creates the epic branch, breaks the epic into steps, writes TDD tests, tags the test baseline, writes the implementation plan | After reporting "planning complete" |
-| **Learnings-researcher** | Plan-epic | Searches local and shared knowledge base for patterns relevant to this epic | After returning findings to plan-epic |
+
+| Agent                    | Created by   | Purpose                                                                                                                       | Torn down                             |
+| ------------------------ | ------------ | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| **Plan-epic**            | Orchestrator | Creates the epic branch, breaks the epic into steps, writes TDD tests, tags the test baseline, writes the implementation plan | After reporting "planning complete"   |
+| **Learnings-researcher** | Plan-epic    | Searches local and shared knowledge base for patterns relevant to this epic                                                   | After returning findings to plan-epic |
+
 
 The learnings-researcher is nested inside plan-epic — it is created and torn down within the plan-epic agent's lifetime. When plan-epic is torn down, its understanding of the epic (why tests were designed a certain way, trade-offs considered) is lost. Only the written plan and tests survive into the build phase.
 
 #### Phase B: Build
 
-| Agent | Created by | Purpose | Torn down |
-|-------|-----------|---------|-----------|
-| **Build-step (coordinator)** | Orchestrator | Loops through steps, dispatches developer/reviewer per step, monitors circuit breakers, updates step-level state | After all steps pass review, or circuit breaker trips |
-| **Developer** (per step) | Build-step coordinator | Implements code for one step, runs tests, self-reviews, commits | After completing that step's implementation |
-| **Reviewer** (per step) | Build-step coordinator | Reviews one step's diff against review criteria, verifies tests pass, checks test immutability | After returning review verdict for that step |
-| **Developer** (fix round) | Build-step coordinator | Fixes specific reviewer feedback for one step | After committing fixes |
-| **Replanning agent** | Build-step coordinator (autonomous mode only) | Analyzes persistent test failures, proposes test corrections or alternative approaches | After returning verdict |
+
+| Agent                        | Created by                                    | Purpose                                                                                                          | Torn down                                             |
+| ---------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **Build-step (coordinator)** | Orchestrator                                  | Loops through steps, dispatches developer/reviewer per step, monitors circuit breakers, updates step-level state | After all steps pass review, or circuit breaker trips |
+| **Developer** (per step)     | Build-step coordinator                        | Implements code for one step, runs tests, self-reviews, commits                                                  | After completing that step's implementation           |
+| **Reviewer** (per step)      | Build-step coordinator                        | Reviews one step's diff against review criteria, verifies tests pass, checks test immutability                   | After returning review verdict for that step          |
+| **Developer** (fix round)    | Build-step coordinator                        | Fixes specific reviewer feedback for one step                                                                    | After committing fixes                                |
+| **Replanning agent**         | Build-step coordinator (autonomous mode only) | Analyzes persistent test failures, proposes test corrections or alternative approaches                           | After returning verdict                               |
+
 
 Each step gets a fresh developer and reviewer — they do not carry context from previous steps. If the reviewer requests changes, a new developer agent is spawned with the feedback. The replanning agent is only dispatched when the circuit breaker trips in autonomous mode.
 
 #### Phase C: Submit
 
-| Agent | Created by | Purpose | Torn down |
-|-------|-----------|---------|-----------|
+
+| Agent           | Created by   | Purpose                                                                                                    | Torn down                         |
+| --------------- | ------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | **Submit-epic** | Orchestrator | Runs Definition of Done, quality scan, promotes learnings, creates PR (and auto-merges in autonomous mode) | After reporting PR created/merged |
+
 
 If submit-epic reports a code-level DoD failure in autonomous mode, the orchestrator re-dispatches a **build-step** agent to fix the issue, then re-dispatches **submit-epic**. This retry loop runs up to 2 times before halting. Each re-dispatched agent is a fresh instance with no memory of prior attempts — the failure context is passed explicitly by the orchestrator.
 
@@ -432,6 +455,7 @@ databricks:
 ```
 
 Then set the environment variable:
+
 ```bash
 export DATABRICKS_TOKEN="your-token"
 ```
@@ -470,6 +494,7 @@ Over time, solution docs accumulate in `kyros-agent-workflow/docs/solutions/`. R
 ```
 
 This will:
+
 - Archive superseded solutions
 - Flag stale docs for your review (refresh, deprecate, or skip)
 - Detect duplicate solutions
@@ -498,6 +523,7 @@ The autonomous workflow:
 4. The harness runs the full plan/build/submit loop for every epic, auto-merging PRs along the way
 
 The entire project executes end-to-end:
+
 ```
 Plan -> Build -> Submit -> Plan -> Build -> Submit -> ... -> Done
 ```
