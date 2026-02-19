@@ -12,8 +12,8 @@ Create a TDD plan for a single epic. Write all tests before any implementation. 
 ## Context (provided by orchestrator)
 
 This skill is invoked by the `execute-plan` orchestrator as a sub-agent. The orchestrator provides:
-- **epic_spec_path**: Path to the epic's YAML spec file
-- **epics_dir**: Path to the epics directory (for state updates)
+- **epic_spec_path**: Path to the epic's YAML spec file (in `<build_dir>/epic-specs/`)
+- **build_dir**: Path to the build directory (e.g., `kyros-agent-workflow/builds/v1`)
 - **epic_name**: Name identifier for this epic
 
 ## Process
@@ -74,7 +74,7 @@ git tag tdd-baseline-<epic-name>
 
 ### Step 6: Write the implementation plan
 
-Create `kyros-agent-workflow/docs/plans/<epic-name>-plan.md` with the detailed implementation plan. Follow this format:
+Create `<build_dir>/plans/<epic-name>-plan.md` with the detailed implementation plan. Follow this format:
 
 ````markdown
 # <Epic Name> Implementation Plan
@@ -125,7 +125,7 @@ Requirements:
 ### Step 7: Commit and report
 
 ```bash
-git add kyros-agent-workflow/tests/ kyros-agent-workflow/docs/plans/
+git add kyros-agent-workflow/tests/ <build_dir>/plans/
 git commit -m "test: write TDD tests for epic <name>; plan: add implementation plan"
 ```
 
