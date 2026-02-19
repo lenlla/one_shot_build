@@ -274,43 +274,64 @@
 
     /**
      * Create a DOM element representing a step sub-card.
-     * @param {object} step — step object with _key, tests_pass, review_approved
+     * @param {object} step — step object with _key, status, tests_pass, review_approved
      * @returns {HTMLElement}
      */
     function createStepCard(step) {
+        var status = step.status || 'pending';
         var testsPass = !!step.tests_pass;
         var reviewPass = !!step.review_approved;
-        var bothPass = testsPass && reviewPass;
-        var neitherPass = !testsPass && !reviewPass;
+        var reviewRounds = step.review_rounds || 0;
 
+        // Determine card class from status
         var stepClass;
-        if (bothPass) stepClass = 'step-pass';
-        else if (neitherPass) stepClass = 'step-pending';
-        else stepClass = 'step-partial';
+        if (status === 'completed') stepClass = 'step-pass';
+        else if (status === 'in_progress') stepClass = 'step-partial';
+        else stepClass = 'step-pending';
 
         var div = document.createElement('div');
         div.className = 'step-card ' + stepClass;
 
+        // Status dot
+        var statusDot = document.createElement('span');
+        statusDot.className = 'status-dot status-' + status;
+        statusDot.title = formatLabel(status);
+        div.appendChild(statusDot);
+
         var nameSpan = document.createElement('span');
         nameSpan.className = 'step-name';
         nameSpan.textContent = formatLabel(step._key);
+        div.appendChild(nameSpan);
 
+        var indicators = document.createElement('span');
+        indicators.className = 'step-indicators';
+
+        // Review rounds badge (if > 0)
+        if (reviewRounds > 0) {
+            var roundsBadge = document.createElement('span');
+            roundsBadge.className = 'review-rounds-badge';
+            roundsBadge.textContent = 'R' + reviewRounds;
+            roundsBadge.title = reviewRounds + ' review round(s)';
+            indicators.appendChild(roundsBadge);
+        }
+
+        // Gate dots
         var gates = document.createElement('span');
         gates.className = 'step-gates';
 
         var testDot = document.createElement('span');
         testDot.className = 'gate-dot ' + (testsPass ? 'pass' : 'fail');
-        testDot.title = 'Tests: ' + (testsPass ? 'pass' : 'fail');
+        testDot.title = 'Tests: ' + (testsPass ? 'pass' : 'pending');
 
         var reviewDot = document.createElement('span');
         reviewDot.className = 'gate-dot ' + (reviewPass ? 'pass' : 'fail');
-        reviewDot.title = 'Review: ' + (reviewPass ? 'pass' : 'fail');
+        reviewDot.title = 'Review: ' + (reviewPass ? 'approved' : 'pending');
 
         gates.appendChild(testDot);
         gates.appendChild(reviewDot);
+        indicators.appendChild(gates);
 
-        div.appendChild(nameSpan);
-        div.appendChild(gates);
+        div.appendChild(indicators);
         return div;
     }
 
