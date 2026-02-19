@@ -13,8 +13,8 @@ Coordinate implementation of an epic's steps. For each step, spawn a fresh devel
 
 This skill is invoked by the `execute-plan` orchestrator as a sub-agent. The orchestrator provides:
 - **epic_name**: Name identifier for this epic
-- **epics_dir**: Path to the epics directory (for state updates)
-- **plan_path**: Path to the implementation plan (`kyros-agent-workflow/docs/plans/<epic>-plan.md`)
+- **build_dir**: Path to the build directory (for state updates)
+- **plan_path**: Path to the implementation plan (`<build_dir>/plans/<epic>-plan.md`)
 - **epic_spec_path**: Path to the epic YAML spec
 - **tdd_baseline_tag**: Git tag for test immutability checks (e.g., `tdd-baseline-<epic-name>`)
 - **mode**: `interactive` or `autonomous` (determines whether replanning escalation is available)
@@ -31,7 +31,7 @@ Source `<plugin_root>/lib/state.sh` and call `init_steps_from_plan` to parse the
 
 ```bash
 source <plugin_root>/lib/state.sh
-init_steps_from_plan "<epics_dir>" "<epic_name>" "<plan_path>"
+init_steps_from_plan "<build_dir>" "<epic_name>" "<plan_path>"
 ```
 
 If step entries already exist (resumed session), skip initialization — use the existing state.
@@ -51,7 +51,7 @@ Parse the plan file to extract the section for this specific step. The section s
 #### 2b: Update state
 
 ```bash
-update_step_status "<epics_dir>" "<epic_name>" "<step_name>" "in_progress"
+update_step_status "<build_dir>" "<epic_name>" "<step_name>" "in_progress"
 ```
 
 #### 2c: Dispatch developer sub-agent
@@ -149,12 +149,12 @@ Wait for the reviewer sub-agent to complete.
 #### 2e: Handle review result
 
 **If APPROVED:**
-- Update state: `update_step_status "<epics_dir>" "<epic_name>" "<step_name>" "completed"`
-- Log progress: `log_progress "<epics_dir>" "Step <step_name> approved by reviewer"`
+- Update state: `update_step_status "<build_dir>" "<epic_name>" "<step_name>" "completed"`
+- Log progress: `log_progress "<build_dir>" "Step <step_name> approved by reviewer"`
 - Continue to the next step
 
 **If CHANGES_REQUESTED:**
-- Increment review rounds: `increment_review_rounds "<epics_dir>" "<epic_name>" "<step_name>"`
+- Increment review rounds: `increment_review_rounds "<build_dir>" "<epic_name>" "<step_name>"`
 - Check if review rounds exceed threshold (default 5 from `.harnessrc`):
   - **If exceeded:** Trigger circuit breaker (see below)
   - **If not exceeded:** Dispatch a **new developer sub-agent** with the reviewer's feedback:
@@ -190,7 +190,7 @@ Track across the step loop:
 | Review rounds exceeded | 5 rounds for a single step | Halt. Trigger replanning escalation (see Step 4) or report to orchestrator. |
 
 When halting without replanning:
-1. Log the issue: `log_progress "<epics_dir>" "CIRCUIT BREAKER: <signal> for step <step_name>"`
+1. Log the issue: `log_progress "<build_dir>" "CIRCUIT BREAKER: <signal> for step <step_name>"`
 2. Report the failure context to the orchestrator
 
 ### Step 4: Replanning escalation (autonomous mode only)
@@ -251,7 +251,7 @@ If the tests are WRONG and need modification:
 - Apply the proposed test changes
 - Create a new TDD baseline tag: `tdd-baseline-<epic-name>-v<N>` (increment N)
 - Update the `tdd_baseline_tag` used by subsequent developer/reviewer agents
-- Log prominently: `log_progress "<epics_dir>" "REPLAN: Tests modified for step <step_name>. New baseline: <new_tag>. Justification: <summary>"`
+- Log prominently: `log_progress "<build_dir>" "REPLAN: Tests modified for step <step_name>. New baseline: <new_tag>. Justification: <summary>"`
 - Commit: `git commit -m "fix(<epic_name>): correct tests for <step_name> per replanning agent"`
 - Resume building from the current step with the corrected tests
 
@@ -260,5 +260,5 @@ If the tests are WRONG and need modification:
 ### Step 5: After all steps complete
 
 When `get_next_pending_step` returns empty (all steps completed):
-- Log: `log_progress "<epics_dir>" "Epic <epic_name> build complete. All steps pass tests + review."`
+- Log: `log_progress "<build_dir>" "Epic <epic_name> build complete. All steps pass tests + review."`
 - Report back to the orchestrator: "Build complete for epic <epic_name>. All steps implemented and reviewed."
