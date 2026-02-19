@@ -491,6 +491,37 @@ header h1 {
     content: attr(title);
 }
 
+/* --- Status dots --- */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.status-dot.status-pending    { background: var(--color-pending); }
+.status-dot.status-in_progress { background: var(--color-in-progress); }
+.status-dot.status-completed  { background: var(--color-completed); }
+
+/* --- Step indicators layout --- */
+.step-indicators {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* --- Review rounds badge --- */
+.review-rounds-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: var(--color-review);
+    color: #1a1a2e;
+}
+
 /* ==========================================================================
    Footer
    ========================================================================== */
