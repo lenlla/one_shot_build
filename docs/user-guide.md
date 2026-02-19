@@ -29,8 +29,8 @@ Before you begin, make sure you have:
 | `/status` | Show where you are and what to do |
 | `/profile-data [paths]` | Profile data tables |
 | `/define-epics [context-files]` | Collaboratively break the project into epics |
-| `/execute-plan <epics-dir>` | Execute epics interactively (plan, build, submit loop) |
-| `/execute-plan-autonomously <epics-dir>` | Execute epics with minimal human intervention |
+| `/execute-plan <build-dir>` | Execute epics interactively (plan, build, submit loop) |
+| `/execute-plan-autonomously <build-dir>` | Execute epics with minimal human intervention |
 | `/board` | Open the Kanban dashboard in your browser |
 | `/prune-knowledge` | Clean up old solution docs |
 
@@ -53,7 +53,7 @@ The harness will ask for your project name, then create the full project structu
 - `kyros-agent-workflow/docs/standards/` — coding standards, definition of done, review criteria
 - `kyros-agent-workflow/docs/solutions/` — where learnings accumulate as you work
 
-> **Note:** All project files live inside the `kyros-agent-workflow/` directory, with `CLAUDE.md` being the only file at the project root. Execution state is tracked per epics directory in `.execution-state.yaml`, created when you run `/execute-plan`.
+> **Note:** All project files live inside the `kyros-agent-workflow/` directory, with `CLAUDE.md` being the only file at the project root. Execution state is tracked per build directory in `.execution-state.yaml`, created when you run `/execute-plan`.
 
 ---
 
@@ -93,31 +93,31 @@ The harness will:
 1. **Ask what you want to build** — do you already have epics in mind, or would you like it to search the knowledge base for similar past projects as inspiration?
 2. **Propose an epic breakdown** — based on your input (or learnings from past projects), propose a sequence of work chunks (e.g., Data Loading, Data Translation, Model Execution, Report Generation)
 3. **Refine with you** — ask whether epics should be split, combined, reordered, or if any are missing
-4. **Ask you to name the epics directory** — you choose where specs are saved (e.g., `epics/v1`)
+4. **Ask you to name the build** — you choose a name (e.g., `v1`, `initial-model`), and specs are saved to `kyros-agent-workflow/builds/<name>/epic-specs/`
 5. **Write epic specs** — each epic gets a YAML spec with acceptance criteria and dependency info
 
 **What you'll decide:** Shape the epic breakdown to match how you think about the project. This is the most important planning step — get it right here and everything downstream flows smoothly.
 
 **What gets created:**
-- `<epics-dir>/01-name.yaml`, `02-name.yaml`, etc. — one spec per epic
+- `kyros-agent-workflow/builds/<name>/epic-specs/01-name.yaml`, `02-name.yaml`, etc. — one spec per epic
 
 ---
 
 ## Step 4: Execute Your Epics
 
-This is where the bulk of the work happens. The `/execute-plan` command orchestrates the full plan/build/submit cycle for every epic in your epics directory.
+This is where the bulk of the work happens. The `/execute-plan` command orchestrates the full plan/build/submit cycle for every epic in your build directory.
 
 ### Choose your execution mode
 
 **Interactive mode** (recommended for first use):
 ```
-/execute-plan <epics-dir>
+/execute-plan <build-dir>
 ```
 Pauses at key checkpoints for your approval: after planning, after building, and after creating a PR. You stay in control.
 
 **Autonomous mode** (for VM execution):
 ```
-/execute-plan-autonomously <epics-dir>
+/execute-plan-autonomously <build-dir>
 ```
 Runs the full cycle end-to-end with minimal human intervention. Auto-merges PRs and advances to the next epic automatically. Best used on an isolated VM with `--dangerously-skip-permissions`.
 
@@ -125,7 +125,7 @@ Runs the full cycle end-to-end with minimal human intervention. Auto-merges PRs 
 
 Before execution begins, the orchestrator will:
 
-1. **Verify the epics directory** — confirms it exists and contains `.yaml` epic specs
+1. **Verify the build directory** — confirms it exists and `epic-specs/` contains `.yaml` epic specs
 2. **Check for concurrent executions** — warns if other executions are already in progress (risk of merge conflicts)
 3. **Check context usage** — recommends clearing context if the session has significant prior conversation
 4. **Check permissions** (autonomous only) — verifies `--dangerously-skip-permissions` is active
@@ -220,7 +220,7 @@ Progress is tracked per step in `.execution-state.yaml`, so a resumed session pi
 
 The orchestrator dispatches a **submit-epic sub-agent** that:
 
-1. **Runs the Definition of Done** — automated checks that all tests pass, no TODO comments or debug prints remain, test immutability is verified, and `<epics-dir>/claude-progress.txt` is up to date
+1. **Runs the Definition of Done** — automated checks that all tests pass, no TODO comments or debug prints remain, test immutability is verified, and `<build-dir>/claude-progress.txt` is up to date
 2. **Runs a quality scan** — checks for coding standard deviations, unused imports, missing type hints, and other drift
 3. **Promotes learnings** — if you have a shared team knowledge repo configured, universal solutions are offered for promotion
 4. **Creates a Pull Request** — pushes the epic branch and creates a PR with a summary of work, test results, and quality findings
@@ -249,7 +249,7 @@ The orchestrator dispatches a **submit-epic sub-agent** that:
 When all epics are done:
 
 - **Interactive mode:** Shows a summary of all PRs created
-- **Autonomous mode:** Logs completion to `<epics-dir>/claude-progress.txt`
+- **Autonomous mode:** Logs completion to `<build-dir>/claude-progress.txt`
 
 ---
 
@@ -329,7 +329,7 @@ If submit-epic reports a code-level DoD failure in autonomous mode, the orchestr
 #### Lifecycle summary
 
 ```
-/execute-plan <epics-dir>
+/execute-plan <build-dir>
 │
 ├─ Epic 1
 │  ├─ Plan-epic ──────────────── created ──── torn down
@@ -491,7 +491,7 @@ The autonomous workflow:
    ```
    Then run:
    ```
-   /execute-plan-autonomously <epics-dir>
+   /execute-plan-autonomously <build-dir>
    ```
 4. The harness runs the full plan/build/submit loop for every epic, auto-merging PRs along the way
 
@@ -508,7 +508,7 @@ Plan -> Build -> Submit -> Plan -> Build -> Submit -> ... -> Done
 You're not in a harness project directory. Navigate to the correct project root (where the `kyros-agent-workflow/` directory exists) or run `/init` to start a new project.
 
 **Circuit breaker triggered**
-The harness stops when it detects the agent is stuck (same error 5+ times, no progress for 3+ iterations, or 5+ review rounds). Read the error context, decide whether to adjust the approach, and resume with `/execute-plan <epics-dir>` (it will offer to resume from where it left off).
+The harness stops when it detects the agent is stuck (same error 5+ times, no progress for 3+ iterations, or 5+ review rounds). Read the error context, decide whether to adjust the approach, and resume with `/execute-plan <build-dir>` (it will offer to resume from where it left off).
 
 **Tests failing after plan phase**
 That's expected. The plan phase writes tests that intentionally fail — they define what the code should do before it exists. The build phase makes them pass.
@@ -517,7 +517,7 @@ That's expected. The plan phase writes tests that intentionally fail — they de
 Check the review feedback. Common causes: missing acceptance criteria, coding standard violations, or regressions in other tests. The harness escalates to you after 5 review rounds.
 
 **Replanning triggered (autonomous mode)**
-The replanning agent was dispatched because the circuit breaker tripped on persistent test failures. Check `<epics-dir>/claude-progress.txt` for the `REPLAN:` log entry, which includes the justification for any test changes. A new TDD baseline tag (`tdd-baseline-<epic-name>-v2`) was created. If you disagree with the test changes, revert the commit and re-run the build interactively.
+The replanning agent was dispatched because the circuit breaker tripped on persistent test failures. Check `<build-dir>/claude-progress.txt` for the `REPLAN:` log entry, which includes the justification for any test changes. A new TDD baseline tag (`tdd-baseline-<epic-name>-v2`) was created. If you disagree with the test changes, revert the commit and re-run the build interactively.
 
 **Build resumed at wrong step**
 If the build seems to be re-doing completed work, check `.execution-state.yaml` for the step-level status. Steps marked `completed` will be skipped. If step state is missing or corrupt, delete the `steps:` block for that epic and re-run — the coordinator will re-initialize steps from the plan.
