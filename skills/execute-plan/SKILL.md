@@ -1,6 +1,6 @@
 ---
 name: execute-plan
-description: Orchestrate execution of an epic plan. Loops through each epic in the specified directory, dispatching sub-agents for planning, building, and submitting. Supports interactive and autonomous modes.
+description: Orchestrate execution of an epic plan. Loops through each epic in the specified build directory, dispatching sub-agents for planning, building, and submitting. Supports interactive and autonomous modes.
 ---
 
 # Execute Plan
@@ -13,16 +13,16 @@ The orchestrator for epic execution. Manages the plan -> build -> submit loop fo
 
 This skill receives from the command entry point:
 - **mode**: `interactive` or `autonomous` (from which command was used)
-- **epics_dir**: Path to the epics directory (from user argument, or ask if not provided)
+- **build_dir**: Path to the build directory (from user argument, or ask if not provided)
 
 ## Startup Sequence
 
-### Step 1: Resolve epics directory
+### Step 1: Resolve build directory
 
-If `epics_dir` was provided as an argument, use it. Otherwise, use AskUserQuestion:
-"Which epics directory should I execute? Provide the path (e.g., `epics/v1`)."
+If `build_dir` was provided as an argument, use it. Otherwise, use AskUserQuestion:
+"Which build directory should I execute? Provide the path (e.g., `kyros-agent-workflow/builds/v1`)."
 
-Verify the directory exists and contains `.yaml` epic spec files. If not, report the error and stop.
+Verify the directory exists and `<build_dir>/epic-specs/` contains `.yaml` epic spec files. If not, report the error and stop.
 
 ### Step 2: Check for concurrent executions
 
@@ -64,7 +64,7 @@ To restart with this flag:
 claude --dangerously-skip-permissions
 ```
 
-Then run: `/execute-plan-autonomously <epics-dir>`
+Then run: `/execute-plan-autonomously <build-dir>`
 
 Do you want to proceed without the flag? You'll need to approve permission prompts manually."
 
@@ -72,7 +72,7 @@ Use AskUserQuestion with options: "Proceed without flag" / "I'll restart with th
 
 ### Step 5: Check for existing execution state
 
-Check if `<epics_dir>/.execution-state.yaml` exists.
+Check if `<build_dir>/.execution-state.yaml` exists.
 
 **If exists:** Read it and show a summary using `execution_summary`:
 "Previous execution found: <summary>
@@ -91,7 +91,7 @@ Use AskUserQuestion with options: "Resume" / "Start fresh"
 
 If "Start fresh": delete the existing `.execution-state.yaml`.
 
-**If not exists (or starting fresh):** Read all `.yaml` files in the epics directory (sorted by filename to preserve ordering). Create `.execution-state.yaml`:
+**If not exists (or starting fresh):** Read all `.yaml` files in `<build_dir>/epic-specs/` (sorted by filename to preserve ordering). Create `.execution-state.yaml`:
 
 ```yaml
 started_at: "<current ISO timestamp>"
@@ -104,10 +104,10 @@ epics:
   ...
 ```
 
-Also create `<epics_dir>/claude-progress.txt` with a header line if it doesn't exist:
+Also create `<build_dir>/claude-progress.txt` with a header line if it doesn't exist:
 
 ```
-# Claude Progress Log — <epics_dir>
+# Claude Progress Log — <build_dir>
 ```
 
 ## Main Loop
@@ -120,8 +120,8 @@ Update state: set epic status to `planning`.
 
 Dispatch a **sub-agent** with the Task tool:
 - Prompt: Invoke the plan-epic skill with context:
-  - epic_spec_path: `<epics_dir>/<epic-file>`
-  - epics_dir: `<epics_dir>`
+  - epic_spec_path: `<build_dir>/epic-specs/<epic-file>`
+  - build_dir: `<build_dir>`
   - epic_name: `<epic-name>`
 - Wait for completion
 
@@ -137,9 +137,9 @@ Update state: set epic status to `building`.
 Dispatch a **sub-agent** with the Task tool:
 - Prompt: Invoke the build-step skill with context:
   - epic_name: `<epic-name>`
-  - epics_dir: `<epics_dir>`
-  - plan_path: `kyros-agent-workflow/docs/plans/<epic-name>-plan.md`
-  - epic_spec_path: `<epics_dir>/<epic-file>`
+  - build_dir: `<build_dir>`
+  - plan_path: `<build_dir>/plans/<epic-name>-plan.md`
+  - epic_spec_path: `<build_dir>/epic-specs/<epic-file>`
   - tdd_baseline_tag: `tdd-baseline-<epic-name>`
   - mode: `<interactive|autonomous>`
 - Wait for completion
@@ -158,7 +158,7 @@ Update state: set epic status to `submitting`.
 Dispatch a **sub-agent** with the Task tool:
 - Prompt: Invoke the submit-epic skill with context:
   - epic_name: `<epic-name>`
-  - epics_dir: `<epics_dir>`
+  - build_dir: `<build_dir>`
   - mode: `<interactive|autonomous>`
   - tdd_baseline_tag: `tdd-baseline-<epic-name>`
 - Wait for completion
@@ -202,7 +202,7 @@ Update state: record overall completion timestamp.
 
 Project execution is done."
 
-**Autonomous mode:** Log completion to `<epics_dir>/claude-progress.txt`. "All epics complete. Execution finished."
+**Autonomous mode:** Log completion to `<build_dir>/claude-progress.txt`. "All epics complete. Execution finished."
 
 ## Error Handling
 
