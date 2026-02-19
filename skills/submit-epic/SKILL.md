@@ -13,7 +13,7 @@ Run final quality checks and submit a PR for a completed epic.
 
 This skill is invoked by the `execute-plan` orchestrator as a sub-agent. The orchestrator provides:
 - **epic_name**: Name identifier for this epic
-- **epics_dir**: Path to the epics directory
+- **build_dir**: Path to the build directory
 - **mode**: `interactive` or `autonomous`
 - **tdd_baseline_tag**: Git tag for immutability checks
 
@@ -23,7 +23,7 @@ This skill is invoked by the `execute-plan` orchestrator as a sub-agent. The orc
 
 Execute the DoD checklist:
 ```bash
-bash <plugin_root>/hooks/definition-of-done.sh <epics_dir>
+bash <plugin_root>/hooks/definition-of-done.sh <build_dir>
 ```
 
 **If it fails:**
@@ -53,12 +53,12 @@ Review `kyros-agent-workflow/docs/solutions/` for solution docs created during t
 
 For each doc where `applies_to.scope` is `universal`:
 - **Interactive mode:** Include in report for orchestrator to present to user.
-- **Autonomous mode:** If `shared_knowledge_path` is configured, automatically promote. Log to `<epics_dir>/claude-progress.txt`.
+- **Autonomous mode:** If `shared_knowledge_path` is configured, automatically promote. Log to `<build_dir>/claude-progress.txt`.
 
 ### Step 4: Commit final state
 
 ```bash
-git add <epics_dir>/claude-progress.txt
+git add <build_dir>/claude-progress.txt
 git commit -m "chore: finalize epic <name> for submission"
 ```
 
