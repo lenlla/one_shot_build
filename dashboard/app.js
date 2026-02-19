@@ -217,8 +217,7 @@
         // Step count tag
         if (stepKeys.length > 0) {
             var completedSteps = stepKeys.filter(function (k) {
-                var s = steps[k];
-                return s.tests_pass && s.review_approved;
+                return isStepCompleted(steps[k]);
             }).length;
             var stepsTag = document.createElement('span');
             stepsTag.className = 'meta-tag tag-steps';
@@ -242,8 +241,7 @@
         // Progress bar
         if (stepKeys.length > 0) {
             var completedSteps2 = stepKeys.filter(function (k) {
-                var s = steps[k];
-                return s.tests_pass && s.review_approved;
+                return isStepCompleted(steps[k]);
             }).length;
             var progressBar = document.createElement('div');
             progressBar.className = 'epic-progress';
@@ -480,6 +478,17 @@
             return { id: 'review_pending', label: 'Review pending', cls: 'gate-partial' };
         }
         return { id: 'tests_pending', label: 'Tests pending', cls: 'gate-fail' };
+    }
+
+    /**
+     * Determine if a step is completed.
+     * Uses status field as primary indicator, falls back to gate booleans.
+     * @param {object} step
+     * @returns {boolean}
+     */
+    function isStepCompleted(step) {
+        if (step.status === 'completed') return true;
+        return !!step.tests_pass && !!step.review_approved;
     }
 
     /**
