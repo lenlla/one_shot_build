@@ -1,0 +1,47 @@
+started_at: "2026-02-19T14:30:00Z"
+mode: interactive
+epics:
+  data-loading:
+    status: completed
+    steps:
+      task-1-load-csv:
+        status: completed
+        tests_pass: true
+        review_approved: true
+        review_rounds: 1
+      task-2-validate-schema:
+        status: completed
+        tests_pass: true
+        review_approved: true
+        review_rounds: 2
+  transformation:
+    status: in_progress
+    current_step: "task-2-normalize-columns"
+    steps:
+      task-1-parse-dates:
+        status: completed
+        tests_pass: true
+        review_approved: true
+        review_rounds: 1
+      task-2-normalize-columns:
+        status: in_progress
+        tests_pass: true
+        review_approved: false
+        review_rounds: 0
+      task-3-aggregate-metrics:
+        status: pending
+  reporting:
+    status: pending
+    steps:
+      task-1-build-summary:
+        status: pending
+      task-2-generate-charts:
+        status: pending
+  model-training:
+    status: plan
+    steps:
+      task-1-feature-engineering:
+        status: pending
+      task-2-train-model:
+        status: pending
+circuit_breaker: {}
