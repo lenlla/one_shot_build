@@ -309,11 +309,13 @@ The learnings-researcher is nested inside plan-epic — it is created and torn d
 
 | Agent | Created by | Purpose | Torn down |
 |-------|-----------|---------|-----------|
-| **Build-step (team lead)** | Orchestrator | Coordinates the developer/reviewer loop, monitors circuit breakers, updates state. Does not write code (delegate mode). | After all steps pass review, or circuit breaker trips |
-| **Developer** | Build-step | Implements code one step at a time, runs tests, self-reviews, commits, writes solution docs | When build-step is torn down |
-| **Reviewer** | Build-step | Reviews each step's diff against review criteria, verifies tests pass, checks test immutability | When build-step is torn down |
+| **Build-step (coordinator)** | Orchestrator | Loops through steps, dispatches developer/reviewer per step, monitors circuit breakers, updates step-level state | After all steps pass review, or circuit breaker trips |
+| **Developer** (per step) | Build-step coordinator | Implements code for one step, runs tests, self-reviews, commits | After completing that step's implementation |
+| **Reviewer** (per step) | Build-step coordinator | Reviews one step's diff against review criteria, verifies tests pass, checks test immutability | After returning review verdict for that step |
+| **Developer** (fix round) | Build-step coordinator | Fixes specific reviewer feedback for one step | After committing fixes |
+| **Replanning agent** | Build-step coordinator (autonomous mode only) | Analyzes persistent test failures, proposes test corrections or alternative approaches | After returning verdict |
 
-The developer and reviewer are teammates created by build-step. All three share the same lifetime — when build-step ends, the developer and reviewer are torn down with it. Each has its own context window focused on its role.
+Each step gets a fresh developer and reviewer — they do not carry context from previous steps. If the reviewer requests changes, a new developer agent is spawned with the feedback. The replanning agent is only dispatched when the circuit breaker trips in autonomous mode.
 
 #### Phase C: Submit
 
@@ -329,25 +331,29 @@ If submit-epic reports a code-level DoD failure in autonomous mode, the orchestr
 /execute-plan <epics-dir>
 │
 ├─ Epic 1
-│  ├─ Plan-epic ─────────────── created ──── torn down
-│  │  └─ Learnings-researcher ── created ─ torn down
+│  ├─ Plan-epic ──────────────── created ──── torn down
+│  │  └─ Learnings-researcher ─── created ─ torn down
 │  │
-│  ├─ Build-step (lead) ─────── created ──────────────── torn down
-│  │  ├─ Developer ───────────── created ──────────────── torn down
-│  │  └─ Reviewer ────────────── created ──────────────── torn down
-│  │
-│  └─ Submit-epic ───────────── created ──── torn down
-│
-├─ Epic 2
-│  ├─ Plan-epic ─────────────── created ──── torn down    (fresh instance)
-│  │  └─ Learnings-researcher ── created ─ torn down
+│  ├─ Build-step (coordinator) ── created ──────────────────────────── torn down
+│  │  ├─ Step 1: Developer ────── created ── torn down
+│  │  │          Reviewer ─────── created ── torn down
+│  │  ├─ Step 2: Developer ────── created ── torn down
+│  │  │          Reviewer ─────── created ── torn down  (changes requested)
+│  │  │          Developer ────── created ── torn down  (fix round)
+│  │  │          Reviewer ─────── created ── torn down  (approved)
+│  │  ├─ Step 3: Developer ────── created ── torn down
+│  │  │          Reviewer ─────── created ── torn down
 │  │  ...
+│  │
+│  └─ Submit-epic ────────────── created ──── torn down
+│
+├─ Epic 2 (fresh instances of everything)
 │  ...
 │
-Orchestrator ──────────────────── lives for entire execution ──────────────
+Orchestrator ───────────────────── lives for entire execution ─────────
 ```
 
-No agent carries memory from one epic to the next. The developer that built epic 1 is not the same developer that builds epic 2. All cross-epic continuity comes from files on disk.
+No agent carries context between steps or between epics. Each developer and reviewer starts fresh. All continuity flows through files: the implementation plan, committed code, execution state YAML, solution docs, and progress logs.
 
 ---
 
