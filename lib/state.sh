@@ -10,12 +10,12 @@ PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
 
 HARNESS_DIR="kyros-agent-workflow"
 
-# Append a timestamped entry to the progress file for an epics directory
-# Usage: log_progress "/path/to/epics/v1" "Completed step-01 implementation"
+# Append a timestamped entry to the progress file for a build directory
+# Usage: log_progress "/path/to/builds/v1" "Completed step-01 implementation"
 log_progress() {
-    local epics_dir="$1"
+    local build_dir="$1"
     local message="$2"
-    local progress_file="${epics_dir}/claude-progress.txt"
+    local progress_file="${build_dir}/claude-progress.txt"
     local timestamp
     timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%d %H:%M:%S")
 
@@ -24,20 +24,20 @@ log_progress() {
 
 # --- Execution state operations ---
 
-# Resolve the path to .execution-state.yaml for a given epics directory
-# Usage: execution_state_file "/path/to/epics/v1"
+# Resolve the path to .execution-state.yaml for a given build directory
+# Usage: execution_state_file "/path/to/builds/v1"
 execution_state_file() {
-    local epics_dir="$1"
-    echo "${epics_dir}/.execution-state.yaml"
+    local build_dir="$1"
+    echo "${build_dir}/.execution-state.yaml"
 }
 
 # Read a value from an execution state file
-# Usage: read_execution_state "/path/to/epics/v1" "epics.data-loading.status"
+# Usage: read_execution_state "/path/to/builds/v1" "epics.data-loading.status"
 read_execution_state() {
-    local epics_dir="$1"
+    local build_dir="$1"
     local path="$2"
     local state_file
-    state_file=$(execution_state_file "$epics_dir")
+    state_file=$(execution_state_file "$build_dir")
 
     if [[ ! -f "$state_file" ]]; then
         echo ""
@@ -60,13 +60,13 @@ read_execution_state() {
 }
 
 # Update a value in an execution state file
-# Usage: update_execution_state "/path/to/epics/v1" "epics.data-loading.status" "completed"
+# Usage: update_execution_state "/path/to/builds/v1" "epics.data-loading.status" "completed"
 update_execution_state() {
-    local epics_dir="$1"
+    local build_dir="$1"
     local path="$2"
     local value="$3"
     local state_file
-    state_file=$(execution_state_file "$epics_dir")
+    state_file=$(execution_state_file "$build_dir")
 
     if [[ ! -f "$state_file" ]]; then
         echo "Error: Execution state file not found at $state_file" >&2
@@ -99,23 +99,23 @@ find_active_executions() {
     fi
 
     while IFS= read -r state_file; do
-        local epics_dir
-        epics_dir=$(dirname "$state_file")
+        local build_dir
+        build_dir=$(dirname "$state_file")
         # Check if any epic is not completed
         local pending
         pending=$(yq eval '.epics | to_entries | .[] | select(.value.status != "completed") | .key' "$state_file" 2>/dev/null || echo "")
         if [[ -n "$pending" ]]; then
-            echo "$epics_dir"
+            echo "$build_dir"
         fi
     done <<< "$states"
 }
 
 # Get a human-readable summary of an execution state
-# Usage: execution_summary "/path/to/epics/v1"
+# Usage: execution_summary "/path/to/builds/v1"
 execution_summary() {
-    local epics_dir="$1"
+    local build_dir="$1"
     local state_file
-    state_file=$(execution_state_file "$epics_dir")
+    state_file=$(execution_state_file "$build_dir")
 
     if [[ ! -f "$state_file" ]]; then
         echo "No execution state found"
@@ -148,36 +148,36 @@ execution_summary() {
 # --- Step-level state operations ---
 
 # Read the status of a specific step within an epic
-# Usage: read_step_status "/path/to/epics/v1" "data-loading" "step-01"
+# Usage: read_step_status "/path/to/builds/v1" "data-loading" "step-01"
 read_step_status() {
-    local epics_dir="$1"
+    local build_dir="$1"
     local epic_name="$2"
     local step_name="$3"
-    read_execution_state "$epics_dir" "epics.\"${epic_name}\".steps.\"${step_name}\".status"
+    read_execution_state "$build_dir" "epics.\"${epic_name}\".steps.\"${step_name}\".status"
 }
 
 # Update the status of a specific step within an epic
-# Usage: update_step_status "/path/to/epics/v1" "data-loading" "step-01" "completed"
+# Usage: update_step_status "/path/to/builds/v1" "data-loading" "step-01" "completed"
 update_step_status() {
-    local epics_dir="$1"
+    local build_dir="$1"
     local epic_name="$2"
     local step_name="$3"
     local status="$4"
-    update_execution_state "$epics_dir" "epics.\"${epic_name}\".steps.\"${step_name}\".status" "$status"
+    update_execution_state "$build_dir" "epics.\"${epic_name}\".steps.\"${step_name}\".status" "$status"
     # Also update current_step pointer
     if [[ "$status" == "in_progress" ]]; then
-        update_execution_state "$epics_dir" "epics.\"${epic_name}\".current_step" "$step_name"
+        update_execution_state "$build_dir" "epics.\"${epic_name}\".current_step" "$step_name"
     fi
 }
 
 # Parse implementation plan and initialize step entries in execution state
-# Usage: init_steps_from_plan "/path/to/epics/v1" "data-loading" "/path/to/plan.md"
+# Usage: init_steps_from_plan "/path/to/builds/v1" "data-loading" "/path/to/plan.md"
 init_steps_from_plan() {
-    local epics_dir="$1"
+    local build_dir="$1"
     local epic_name="$2"
     local plan_path="$3"
     local state_file
-    state_file=$(execution_state_file "$epics_dir")
+    state_file=$(execution_state_file "$build_dir")
 
     if [[ ! -f "$plan_path" ]]; then
         echo "Error: Plan file not found at $plan_path" >&2
@@ -205,12 +205,12 @@ init_steps_from_plan() {
 }
 
 # Get the next pending step for an epic
-# Usage: get_next_pending_step "/path/to/epics/v1" "data-loading"
+# Usage: get_next_pending_step "/path/to/builds/v1" "data-loading"
 get_next_pending_step() {
-    local epics_dir="$1"
+    local build_dir="$1"
     local epic_name="$2"
     local state_file
-    state_file=$(execution_state_file "$epics_dir")
+    state_file=$(execution_state_file "$build_dir")
 
     if [[ ! -f "$state_file" ]]; then
         echo ""
@@ -223,13 +223,13 @@ get_next_pending_step() {
 }
 
 # Increment the review round counter for a step
-# Usage: increment_review_rounds "/path/to/epics/v1" "data-loading" "step-01"
+# Usage: increment_review_rounds "/path/to/builds/v1" "data-loading" "step-01"
 increment_review_rounds() {
-    local epics_dir="$1"
+    local build_dir="$1"
     local epic_name="$2"
     local step_name="$3"
     local state_file
-    state_file=$(execution_state_file "$epics_dir")
+    state_file=$(execution_state_file "$build_dir")
 
     local current
     current=$(yq eval ".epics.\"${epic_name}\".steps.\"${step_name}\".review_rounds // 0" "$state_file" 2>/dev/null)
