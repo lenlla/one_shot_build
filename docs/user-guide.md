@@ -152,58 +152,67 @@ The orchestrator dispatches a **plan-epic sub-agent** that:
 
 #### Phase B: Build
 
-The orchestrator dispatches a **build-step sub-agent** that uses Claude Code's **agent team** feature to create a three-role team, where each agent runs in its own context window:
+The orchestrator dispatches a **build-step coordinator** that manages the implementation of all steps within the epic. Unlike the planning and submit phases, the build phase spawns multiple sub-agents — a fresh developer and reviewer for each step.
 
-- **Team lead** — coordinates the workflow, populates the task list with steps from the implementation plan, monitors for stuck loops, and updates state after each approved step. The lead operates in delegate mode — it coordinates but does not write code.
-- **Developer agent** — implements the code, one step at a time. Has its own context focused on the implementation plan, source code, and test output.
-- **Reviewer agent** — reviews each completed step. Has its own context focused on the diff, coding standards, and acceptance criteria. The reviewer is adversarial — its job is to catch problems, not rubber-stamp approvals.
+**Per-step agent cycle:**
 
-Because each agent has its own context, they can focus deeply on their role without being cluttered by the other's work.
+For each step in the implementation plan, the coordinator:
 
-**The developer/reviewer loop:**
-
-For each step in the epic, the team runs a build/review loop:
+1. **Extracts the step context** from the plan file — the specific section with files, test commands, and implementation instructions
+2. **Dispatches a developer sub-agent** with just that step's context, coding standards, and the TDD baseline tag. The developer implements the code, runs tests, self-reviews, and commits.
+3. **Dispatches a reviewer sub-agent** with the git diff for that step, review criteria, and acceptance criteria. The reviewer runs the test suite, checks test immutability, and evaluates the diff.
 
 ```
-Developer                          Reviewer
-    |                                  |
-    +- Read implementation plan        |
-    +- Write code to pass tests        |
-    +- Run test suite                  |
-    +- Self-review & commit            |
-    +---------- hand off ------------->|
-    |                                  +- Read the git diff
-    |                                  +- Check against review criteria
-    |                                  +- Verify tests pass independently
-    |                                  +- Check test immutability
-    |                                  |
-    |                          +-------+
-    |                          | Pass? |
-    |                          +---+---+
-    |                    No ---+   |
-    |                          |   +--- Yes: Approve step
-    |<-- specific feedback ----+              |
-    +- Fix issues                             |
-    +- Re-commit                        Lead updates state
-    +---------- hand off ------------->|
-    |                                  +- Re-review the fixes
-    |                                  +- ...
+Coordinator (build-step)
+    |
+    +- Step 1 ─── Developer ─── Reviewer ─── Approved ✓
+    |              (torn down)   (torn down)
+    |
+    +- Step 2 ─── Developer ─── Reviewer ─── Changes requested
+    |              (torn down)   (torn down)
+    |                  |
+    |              New Developer ── Reviewer ─── Approved ✓
+    |              (torn down)      (torn down)
+    |
+    +- Step 3 ─── Developer ─── Reviewer ─── Approved ✓
+    |              (torn down)   (torn down)
+    ...
 ```
 
-When the reviewer requests changes, the feedback is specific: which criterion failed, what file and line is wrong, and what needs to change. The developer then fixes only what was flagged and hands off again. This loop repeats until the reviewer approves — or until it exceeds 5 rounds, at which point the lead halts and escalates to you.
+Each developer and reviewer agent gets a **clean context window** focused entirely on one step. This prevents context saturation on large epics — the developer working on step 5 isn't burdened by the accumulated context of steps 1-4.
+
+**The review loop:**
+
+When the reviewer requests changes, the coordinator spawns a **new developer agent** with the reviewer's specific feedback. The new developer has a fresh context containing only the step instructions and the feedback — no accumulated frustration from prior attempts. The reviewer then re-reviews. This loop repeats up to 5 rounds per step before the circuit breaker triggers.
 
 **Circuit breaker monitoring:**
 
-The team lead watches for stuck loops:
+The coordinator watches for stuck loops:
 
 | Signal | Threshold | What happens |
 |--------|-----------|--------------|
-| No file changes | 3 iterations | Lead warns developer, suggests different approach |
-| Same error repeated | 5 times | Lead halts the team and escalates to you |
-| Review rounds exceeded | 5 rounds | Lead halts the team and escalates to you |
+| No file changes | 3 developer dispatches | Coordinator warns the next developer to try a different approach |
+| Same error repeated | 5 times | Circuit breaker triggers (see replanning below) |
+| Review rounds exceeded | 5 rounds | Circuit breaker triggers (see replanning below) |
+
+**Replanning escalation (autonomous mode only):**
+
+When the circuit breaker triggers due to persistent test failures, the coordinator can dispatch a **replanning agent** before halting. The replanning agent:
+
+1. Analyzes why the tests can't be passed — is the implementation wrong, or are the tests wrong?
+2. If the tests are correct: suggests a different implementation approach for the developer to try
+3. If the tests are genuinely wrong: proposes specific test corrections with justification, applies them, creates a new TDD baseline tag (`tdd-baseline-<epic-name>-v2`), and logs the change prominently
+
+This is a controlled release valve — it preserves test immutability as the default while giving autonomous mode a way forward when the plan was genuinely wrong. Only one replanning escalation is allowed per step; if it doesn't resolve the issue, the pipeline halts for human intervention.
+
+In interactive mode, the circuit breaker always escalates to you directly — no automatic replanning.
+
+**Step-level state tracking:**
+
+Progress is tracked per step in `.execution-state.yaml`, so a resumed session picks up at the exact step that was interrupted — not from the beginning of the epic.
 
 **What happens in the background:**
-- Solution docs are written automatically when the developer resolves tricky problems. These accumulate in `kyros-agent-workflow/docs/solutions/` as your project's knowledge base.
+- Solution docs are written automatically when a developer resolves tricky problems. These accumulate in `kyros-agent-workflow/docs/solutions/` as your project's knowledge base.
 - The reviewer validates that any new solution docs have correct YAML frontmatter.
 
 #### Phase C: Submit
