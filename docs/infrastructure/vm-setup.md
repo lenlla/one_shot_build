@@ -62,4 +62,4 @@ databricks clusters get --cluster-id <id>
 - Network egress should be limited to: Anthropic API, GitHub, Databricks workspace
 - Credentials should be injected via secrets manager, not baked into the VM image
 - VM should auto-terminate after configurable idle timeout
-- All agent activity is logged to `kyros-agent-workflow/claude-progress.txt` and git history for auditability
+- All agent activity is logged to `<epics-dir>/claude-progress.txt` and git history for auditability

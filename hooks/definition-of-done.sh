@@ -47,8 +47,9 @@ if [[ -d "${HARNESS_DIR}/src" ]]; then
 fi
 
 # --- Check 3: claude-progress.txt exists and is non-empty ---
+PROGRESS_FILE="${EPICS_DIR}/claude-progress.txt"
 if [[ ! -s "$PROGRESS_FILE" ]]; then
-    failures+=("claude-progress.txt is empty or missing")
+    failures+=("claude-progress.txt is empty or missing in ${EPICS_DIR}")
 fi
 
 # --- Check 4: No uncommitted changes ---

@@ -126,7 +126,7 @@ The harness guides projects through 5 phases. Use `/next` to advance automatical
 
 | Component | Description |
 |-----------|-------------|
-| **State library** | Bash helpers to read/write `project-state.yaml` |
+| **State library** | Bash helpers for execution state (`.execution-state.yaml`) and progress logging |
 | **Phase skills** | gather-context, define-epics, plan-epic, build-step, submit-epic |
 | **Enforcement scripts** | Test immutability, definition-of-done, solution doc validation |
 | **Self-check CLI** | Pre-completion verification (tests, immutability, docs, git status) |
@@ -145,4 +145,4 @@ The harness guides projects through 5 phases. Use `/next` to advance automatical
 
 ## Project Status
 
-**Phase: Complete** — All 19 implementation epics built and reviewed. 24 BATS tests passing. Ready for integration testing on a real client project.
+**Phase: Complete** — All 19 implementation epics built and reviewed. 26 BATS tests passing. Ready for integration testing on a real client project.

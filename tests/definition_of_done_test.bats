@@ -12,10 +12,10 @@ setup() {
 
     # Create minimal project structure
     mkdir -p "$TEST_DIR/kyros-agent-workflow/tests" "$TEST_DIR/kyros-agent-workflow/src"
-    echo "Epic build progress logged" > "$TEST_DIR/kyros-agent-workflow/claude-progress.txt"
 
-    # Create epics directory with execution state
+    # Create epics directory with execution state and progress log
     mkdir -p "$TEST_DIR/epics/v1"
+    echo "Epic build progress logged" > "$TEST_DIR/epics/v1/claude-progress.txt"
     cat > "$TEST_DIR/epics/v1/.execution-state.yaml" <<'YAML'
 epics:
   data-loading:
@@ -59,7 +59,7 @@ teardown() {
 }
 
 @test "fails when progress file is empty" {
-    > "$TEST_DIR/kyros-agent-workflow/claude-progress.txt"
+    > "$TEST_DIR/epics/v1/claude-progress.txt"
     git -C "$TEST_DIR" add -A
     git -C "$TEST_DIR" commit -q -m "empty progress"
 
