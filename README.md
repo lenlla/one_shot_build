@@ -38,10 +38,10 @@ This project draws heavily from emerging best practices in "harness engineering"
 
 ## Key Principles (Adapted from Harness Engineering)
 
-1. **Repository as system of record** — All project knowledge (specs, architecture, plans, constraints) lives in the repo, versioned and discoverable by the agent. If the agent can't see it, it doesn't exist.
+1. **Repository as system of record** — All project knowledge (specs, architecture, plans, constraints) lives in the repo, versioned and discoverable by the agent. If the agent can’t see it, it doesn’t exist.
 2. **Progressive disclosure** — Give the agent a map, not a 1,000-page manual. A concise entry point (`CLAUDE.md`) with pointers to deeper sources of truth.
 3. **Mechanical enforcement** — Enforce architectural constraints, coding standards, and quality gates via linters, tests, and validation scripts — not just documentation.
-4. **Agent legibility** — Optimize everything for the agent's ability to reason about it: structured specs, clear directory layouts, typed interfaces, explicit acceptance criteria.
+4. **Agent legibility** — Optimize everything for the agent’s ability to reason about it: structured specs, clear directory layouts, typed interfaces, explicit acceptance criteria.
 5. **Feedback loops** — The agent should be able to validate its own work, detect failures, and self-correct without human intervention for routine issues.
 6. **Humans at the right layer** — Humans define goals, review outputs, and handle judgment calls. The agent handles execution.
 
@@ -91,7 +91,7 @@ The harness guides projects through 5 phases. Use `/next` to advance automatical
 
 | Skill | Phase | Description |
 |-------|-------|-------------|
-| `gather-context` | 1 | Profile data and conduct analyst Q&A |
+| `profile-data` | 1 | Profile data and conduct analyst Q&A |
 | `define-epics` | 2 | Collaboratively break project into epics |
 | `plan-epic` | 3 | Create TDD plan, write tests first |
 | `build-step` | 4 | Per-task agent build/review loop |
@@ -127,7 +127,7 @@ The harness guides projects through 5 phases. Use `/next` to advance automatical
 | Component | Description |
 |-----------|-------------|
 | **State library** | Bash helpers for execution state (`.execution-state.yaml`) and progress logging |
-| **Phase skills** | gather-context, define-epics, plan-epic, build-step, submit-epic |
+| **Phase skills** | profile-data, define-epics, plan-epic, build-step, submit-epic |
 | **Enforcement scripts** | Test immutability, definition-of-done, solution doc validation |
 | **Self-check CLI** | Pre-completion verification (tests, immutability, docs, git status) |
 | **Compound learning** | Solution docs with YAML schema, contradiction detection, cross-project promotion |
