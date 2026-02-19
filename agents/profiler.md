@@ -1,7 +1,7 @@
 ---
 name: profiler
 description: |
-  Use this agent during the gather-context phase to run exploratory PySpark queries against client data and generate a structured data profile.
+  Use this agent during the profile-data phase to run exploratory PySpark queries against client data and generate a structured data profile.
 model: inherit
 ---
 
