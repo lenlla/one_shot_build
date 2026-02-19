@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # hooks/definition-of-done.sh
 # Runs the Definition of Done checklist before PR submission.
-# Usage: definition-of-done.sh <epics-dir> [epic-name]
+# Usage: definition-of-done.sh <build-dir> [epic-name]
 # Exit 0 = PASS, Exit 1 = FAIL with details
 
 set -euo pipefail
@@ -12,12 +12,12 @@ PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Source state library
 source "${PLUGIN_ROOT}/lib/state.sh"
 
-EPICS_DIR="${1:?Usage: definition-of-done.sh <epics-dir> [epic-name]}"
+BUILD_DIR="${1:?Usage: definition-of-done.sh <build-dir> [epic-name]}"
 EPIC="${2:-}"
 
 # If epic not provided, try to detect from execution state
 if [[ -z "$EPIC" ]]; then
-    local_state=$(execution_state_file "$EPICS_DIR")
+    local_state=$(execution_state_file "$BUILD_DIR")
     if [[ -f "$local_state" ]] && command -v yq &>/dev/null; then
         EPIC=$(yq eval '.epics | to_entries | .[] | select(.value.status == "submitting" or .value.status == "building") | .key' "$local_state" 2>/dev/null | head -1)
     fi
@@ -47,9 +47,9 @@ if [[ -d "${HARNESS_DIR}/src" ]]; then
 fi
 
 # --- Check 3: claude-progress.txt exists and is non-empty ---
-PROGRESS_FILE="${EPICS_DIR}/claude-progress.txt"
+PROGRESS_FILE="${BUILD_DIR}/claude-progress.txt"
 if [[ ! -s "$PROGRESS_FILE" ]]; then
-    failures+=("claude-progress.txt is empty or missing in ${EPICS_DIR}")
+    failures+=("claude-progress.txt is empty or missing in ${BUILD_DIR}")
 fi
 
 # --- Check 4: No uncommitted changes ---
