@@ -77,6 +77,14 @@ Check if `<epics_dir>/.execution-state.yaml` exists.
 **If exists:** Read it and show a summary using `execution_summary`:
 "Previous execution found: <summary>
 
+If the resumed epic is in `building` status and has step-level state, also show:
+"Step progress for '<epic-name>':
+- task-1-load-csv: completed
+- task-2-validate-schema: in_progress (review round 2)
+- task-3-type-casting: pending
+
+The build will resume from '<next-pending-step>'."
+
 Would you like to resume from where you left off, or start fresh?"
 
 Use AskUserQuestion with options: "Resume" / "Start fresh"
@@ -133,6 +141,7 @@ Dispatch a **sub-agent** with the Task tool:
   - plan_path: `kyros-agent-workflow/docs/plans/<epic-name>-plan.md`
   - epic_spec_path: `<epics_dir>/<epic-file>`
   - tdd_baseline_tag: `tdd-baseline-<epic-name>`
+  - mode: `<interactive|autonomous>`
 - Wait for completion
 
 Monitor the sub-agent's response for circuit breaker trips. If a halt is reported:

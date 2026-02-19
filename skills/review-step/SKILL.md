@@ -1,13 +1,13 @@
 ---
 name: review-step
-description: Use to manually invoke the reviewer agent on the current step's work, outside of the agent team flow.
+description: Use to manually invoke the reviewer agent on the current step's work, outside of the normal build-step flow.
 ---
 
 # Review Step
 
 ## Overview
 
-Manually invoke the reviewer agent to review the current step's work. This is useful when running outside the agent team flow or when the automatic review needs to be re-run.
+Manually invoke the reviewer agent to review the current step's work. This is useful when running outside the normal build-step flow or when the automatic review needs to be re-run.
 
 ## Process
 

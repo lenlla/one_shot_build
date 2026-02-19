@@ -135,3 +135,171 @@ YAML
     assert_output --partial "1/3 epics done"
     assert_output --partial "transformation"
 }
+
+# --- step-level state tests ---
+
+@test "read_step_status returns empty when no steps exist" {
+    mkdir -p "$TEST_DIR/epics/v1"
+    cat > "$TEST_DIR/epics/v1/.execution-state.yaml" <<'YAML'
+epics:
+  data-loading:
+    status: building
+YAML
+    run read_step_status "$TEST_DIR/epics/v1" "data-loading" "step-01"
+    assert_success
+    assert_output ""
+}
+
+@test "read_step_status returns step status" {
+    mkdir -p "$TEST_DIR/epics/v1"
+    cat > "$TEST_DIR/epics/v1/.execution-state.yaml" <<'YAML'
+epics:
+  data-loading:
+    status: building
+    steps:
+      step-01:
+        status: completed
+      step-02:
+        status: in_progress
+YAML
+    run read_step_status "$TEST_DIR/epics/v1" "data-loading" "step-01"
+    assert_success
+    assert_output "completed"
+}
+
+@test "update_step_status sets step status" {
+    mkdir -p "$TEST_DIR/epics/v1"
+    cat > "$TEST_DIR/epics/v1/.execution-state.yaml" <<'YAML'
+epics:
+  data-loading:
+    status: building
+    steps:
+      step-01:
+        status: pending
+YAML
+    run update_step_status "$TEST_DIR/epics/v1" "data-loading" "step-01" "in_progress"
+    assert_success
+
+    run read_step_status "$TEST_DIR/epics/v1" "data-loading" "step-01"
+    assert_output "in_progress"
+}
+
+@test "init_steps_from_plan creates step entries from plan headings" {
+    mkdir -p "$TEST_DIR/epics/v1"
+    cat > "$TEST_DIR/epics/v1/.execution-state.yaml" <<'YAML'
+epics:
+  data-loading:
+    status: building
+YAML
+    # Create a mock plan file
+    mkdir -p "$TEST_DIR/kyros-agent-workflow/docs/plans"
+    cat > "$TEST_DIR/kyros-agent-workflow/docs/plans/data-loading-plan.md" <<'PLAN'
+# Data Loading Implementation Plan
+
+**Goal:** Load CSV files
+**Architecture:** Simple pandas loader
+
+---
+
+### Task 1: Load CSV
+
+**Files:**
+- Create: `src/loader.py`
+
+### Task 2: Validate Schema
+
+**Files:**
+- Create: `src/validator.py`
+
+### Task 3: Type Casting
+
+**Files:**
+- Create: `src/caster.py`
+PLAN
+    run init_steps_from_plan "$TEST_DIR/epics/v1" "data-loading" "$TEST_DIR/kyros-agent-workflow/docs/plans/data-loading-plan.md"
+    assert_success
+
+    run read_step_status "$TEST_DIR/epics/v1" "data-loading" "task-1-load-csv"
+    assert_output "pending"
+
+    run read_step_status "$TEST_DIR/epics/v1" "data-loading" "task-2-validate-schema"
+    assert_output "pending"
+
+    run read_step_status "$TEST_DIR/epics/v1" "data-loading" "task-3-type-casting"
+    assert_output "pending"
+}
+
+@test "get_next_pending_step returns first non-completed step" {
+    mkdir -p "$TEST_DIR/epics/v1"
+    cat > "$TEST_DIR/epics/v1/.execution-state.yaml" <<'YAML'
+epics:
+  data-loading:
+    status: building
+    steps:
+      task-1-load-csv:
+        status: completed
+      task-2-validate-schema:
+        status: pending
+      task-3-type-casting:
+        status: pending
+YAML
+    run get_next_pending_step "$TEST_DIR/epics/v1" "data-loading"
+    assert_success
+    assert_output "task-2-validate-schema"
+}
+
+@test "get_next_pending_step returns empty when all steps completed" {
+    mkdir -p "$TEST_DIR/epics/v1"
+    cat > "$TEST_DIR/epics/v1/.execution-state.yaml" <<'YAML'
+epics:
+  data-loading:
+    status: building
+    steps:
+      task-1-load-csv:
+        status: completed
+      task-2-validate-schema:
+        status: completed
+YAML
+    run get_next_pending_step "$TEST_DIR/epics/v1" "data-loading"
+    assert_success
+    assert_output ""
+}
+
+@test "increment_review_rounds tracks review count" {
+    mkdir -p "$TEST_DIR/epics/v1"
+    cat > "$TEST_DIR/epics/v1/.execution-state.yaml" <<'YAML'
+epics:
+  data-loading:
+    status: building
+    steps:
+      step-01:
+        status: in_progress
+        review_rounds: 1
+YAML
+    run increment_review_rounds "$TEST_DIR/epics/v1" "data-loading" "step-01"
+    assert_success
+
+    run read_execution_state "$TEST_DIR/epics/v1" 'epics.data-loading.steps.step-01.review_rounds'
+    assert_output "2"
+}
+
+@test "execution_summary includes step progress" {
+    mkdir -p "$TEST_DIR/epics/v1"
+    cat > "$TEST_DIR/epics/v1/.execution-state.yaml" <<'YAML'
+epics:
+  data-loading:
+    status: building
+    current_step: "task-2-validate-schema"
+    steps:
+      task-1-load-csv:
+        status: completed
+      task-2-validate-schema:
+        status: in_progress
+      task-3-type-casting:
+        status: pending
+YAML
+
+    run execution_summary "$TEST_DIR/epics/v1"
+    assert_success
+    assert_output --partial "step 1/3"
+}
