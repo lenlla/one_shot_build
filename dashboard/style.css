@@ -555,6 +555,65 @@ header h1 {
 }
 
 /* ==========================================================================
+   Task Cards (Tasks tab)
+   ========================================================================== */
+.task-card {
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--color-pending);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+    animation: fadeIn 0.25s ease forwards;
+}
+
+.task-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.task-card.task-pending     { border-left-color: var(--color-pending); }
+.task-card.task-in_progress { border-left-color: var(--color-in-progress); }
+.task-card.task-completed   { border-left-color: var(--color-completed); }
+
+.task-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.task-card-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.task-card-epic-tag {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.task-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+/* ==========================================================================
    Footer
    ========================================================================== */
 footer {
