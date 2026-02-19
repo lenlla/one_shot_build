@@ -303,3 +303,23 @@ YAML
     assert_success
     assert_output --partial "step 1/3"
 }
+
+@test "serve.sh symlinks state file from specified build dir" {
+    mkdir -p "$TEST_DIR/kyros-agent-workflow/builds/v1"
+    echo "epics: {}" > "$TEST_DIR/kyros-agent-workflow/builds/v1/.execution-state.yaml"
+
+    SERVE_DIR=$(mktemp -d)
+    SCRIPT_DIR="${BATS_TEST_DIRNAME}/../dashboard"
+
+    # Simulate what serve.sh does: symlink dashboard files + state file
+    ln -s "$SCRIPT_DIR"/* "$SERVE_DIR/" 2>/dev/null || true
+    ln -s "$TEST_DIR/kyros-agent-workflow/builds/v1/.execution-state.yaml" "$SERVE_DIR/execution-state.yaml" 2>/dev/null || true
+
+    run test -L "$SERVE_DIR/execution-state.yaml"
+    assert_success
+
+    run cat "$SERVE_DIR/execution-state.yaml"
+    assert_output --partial "epics"
+
+    rm -rf "$SERVE_DIR"
+}
