@@ -144,7 +144,7 @@ The orchestrator dispatches a **plan-epic sub-agent** that:
 3. **Breaks the epic into testable steps** — each step is one focused unit of work with clear acceptance criteria
 4. **Writes tests first (TDD)** — tests are written before any implementation code. They will all fail at this point — that's intentional.
 5. **Tags the test baseline** — `tdd-baseline-<epic-name>` git tag locks the tests
-6. **Creates an implementation plan** — step-by-step instructions for what to build
+6. **Creates an implementation plan** — saved to `<build-dir>/plans/<epic-name>-plan.md` with step-by-step instructions for what to build
 
 **Important:** The tests written here are locked. They cannot be modified during the build phase. This ensures the agent builds code that meets the original spec, not code that passes weakened tests.
 
