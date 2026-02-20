@@ -323,3 +323,38 @@ YAML
 
     rm -rf "$SERVE_DIR"
 }
+
+@test "update_execution_state can set tests_pass gate field" {
+    mkdir -p "$TEST_DIR/kyros-agent-workflow/builds/v1"
+    cat > "$TEST_DIR/kyros-agent-workflow/builds/v1/.execution-state.yaml" <<'YAML'
+epics:
+  data-loading:
+    status: building
+    steps:
+      task-1-load-csv:
+        status: in_progress
+YAML
+    run update_execution_state "$TEST_DIR/kyros-agent-workflow/builds/v1" 'epics."data-loading".steps."task-1-load-csv".tests_pass' "true"
+    assert_success
+
+    run read_execution_state "$TEST_DIR/kyros-agent-workflow/builds/v1" 'epics."data-loading".steps."task-1-load-csv".tests_pass'
+    assert_output "true"
+}
+
+@test "update_execution_state can set review_approved gate field" {
+    mkdir -p "$TEST_DIR/kyros-agent-workflow/builds/v1"
+    cat > "$TEST_DIR/kyros-agent-workflow/builds/v1/.execution-state.yaml" <<'YAML'
+epics:
+  data-loading:
+    status: building
+    steps:
+      task-1-load-csv:
+        status: completed
+        tests_pass: true
+YAML
+    run update_execution_state "$TEST_DIR/kyros-agent-workflow/builds/v1" 'epics."data-loading".steps."task-1-load-csv".review_approved' "true"
+    assert_success
+
+    run read_execution_state "$TEST_DIR/kyros-agent-workflow/builds/v1" 'epics."data-loading".steps."task-1-load-csv".review_approved'
+    assert_output "true"
+}
