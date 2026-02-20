@@ -755,6 +755,7 @@
             currentTab = 'epics';
             dom.tabEpics.classList.add('active');
             dom.tabTasks.classList.remove('active');
+            dom.board.classList.remove('tasks-view');
             dom.showSteps.parentElement.style.display = '';
             applyFilters();
         });
@@ -764,6 +765,7 @@
             currentTab = 'tasks';
             dom.tabTasks.classList.add('active');
             dom.tabEpics.classList.remove('active');
+            dom.board.classList.add('tasks-view');
             dom.showSteps.parentElement.style.display = 'none';
             applyFilters();
         });

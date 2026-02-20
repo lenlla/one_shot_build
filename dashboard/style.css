@@ -613,6 +613,17 @@ header h1 {
     gap: 6px;
 }
 
+/* Hide columns not used by step-level status in Tasks view */
+#board.tasks-view .column[data-status="plan"],
+#board.tasks-view .column[data-status="review"],
+#board.tasks-view .column[data-status="blocked"] {
+    display: none;
+}
+
+#board.tasks-view {
+    grid-template-columns: repeat(3, 1fr);
+}
+
 /* ==========================================================================
    Footer
    ========================================================================== */

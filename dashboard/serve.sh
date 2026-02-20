@@ -27,8 +27,12 @@ else
     done
 fi
 
+if [[ ! -L "$SERVE_DIR/execution-state.yaml" ]]; then
+    echo "WARNING: No .execution-state.yaml found under $PROJECT_ROOT"
+fi
+
 # Cleanup on exit
-trap "rm -rf $SERVE_DIR" EXIT
+trap 'rm -rf "$SERVE_DIR"' EXIT
 
 echo "Kanban Dashboard: http://localhost:${PORT}"
 echo "Project root: $PROJECT_ROOT"
