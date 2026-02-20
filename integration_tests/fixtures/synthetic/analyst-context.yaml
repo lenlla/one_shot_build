@@ -1,0 +1,7 @@
+project_name: "integration-test-churn"
+business_objective: "Predict customer churn from demographic and behavioral features"
+target_variable: "churned"
+data_paths: ["customers.csv"]
+exclude_columns: ["customer_id"]
+domain_notes: "This is synthetic test data. No special domain constraints."
+epic_preferences: "Keep it simple - data loading, model training, evaluation"
