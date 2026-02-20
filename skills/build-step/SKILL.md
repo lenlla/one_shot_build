@@ -100,6 +100,11 @@ Report back with:
 
 Wait for the developer sub-agent to complete.
 
+**If developer reports TESTS: PASS:** Update the gate field so the dashboard shows partial progress:
+```bash
+update_execution_state "<build_dir>" "epics.\"<epic_name>\".steps.\"<step_name>\".tests_pass" "true"
+```
+
 **If developer reports TESTS: FAIL** and has exhausted self-debugging (3 attempts with no progress): proceed to reviewer anyway — the reviewer will flag the failure and provide specific feedback for a retry.
 
 #### 2d: Dispatch reviewer sub-agent
@@ -149,7 +154,12 @@ Wait for the reviewer sub-agent to complete.
 #### 2e: Handle review result
 
 **If APPROVED:**
-- Update state: `update_step_status "<build_dir>" "<epic_name>" "<step_name>" "completed"`
+- Update state:
+  ```bash
+  update_step_status "<build_dir>" "<epic_name>" "<step_name>" "completed"
+  update_execution_state "<build_dir>" "epics.\"<epic_name>\".steps.\"<step_name>\".tests_pass" "true"
+  update_execution_state "<build_dir>" "epics.\"<epic_name>\".steps.\"<step_name>\".review_approved" "true"
+  ```
 - Log progress: `log_progress "<build_dir>" "Step <step_name> approved by reviewer"`
 - Continue to the next step
 
