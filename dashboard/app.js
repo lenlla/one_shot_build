@@ -26,12 +26,15 @@
         board:        document.getElementById('board'),
         lastUpdated:  document.getElementById('last-updated'),
         autoRefresh:  document.getElementById('auto-refresh'),
+        tabEpics:     document.querySelector('#tab-bar .tab[data-tab="epics"]'),
+        tabTasks:     document.querySelector('#tab-bar .tab[data-tab="tasks"]'),
     };
 
     // Cached state for diffing
     let lastStateRaw = null;
     let currentState = null;
     let refreshTimer = null;
+    let currentTab = 'epics';
 
     // -----------------------------------------------------------------------
     // State loading
@@ -158,6 +161,77 @@
             card.style.animationDelay = (cardIndex * 0.04) + 's';
             container.appendChild(card);
             cardIndex++;
+        });
+
+        // Add empty-state placeholders to empty columns
+        containers.forEach(function (c) {
+            if (c.children.length === 0) {
+                var empty = document.createElement('div');
+                empty.className = 'empty-state';
+                empty.textContent = 'No items';
+                c.appendChild(empty);
+            }
+        });
+    }
+
+    /**
+     * Render individual task cards into columns based on step status.
+     * @param {object} state — parsed YAML state
+     * @param {object} filters — { epic, status, gate }
+     */
+    function renderTaskBoard(state, filters) {
+        // Clear all card containers
+        var containers = dom.board.querySelectorAll('.card-container');
+        containers.forEach(function (c) { c.innerHTML = ''; });
+
+        if (!state || !state.epics) {
+            showEmptyAll();
+            return;
+        }
+
+        var epics = state.epics;
+        var epicNames = Object.keys(epics);
+        var cardIndex = 0;
+
+        populateEpicFilter(epicNames);
+
+        epicNames.forEach(function (epicKey) {
+            var epic = epics[epicKey];
+            var steps = epic.steps || {};
+            var stepKeys = Object.keys(steps);
+
+            // Apply epic filter
+            if (filters.epic !== 'all' && epicKey !== filters.epic) return;
+
+            stepKeys.forEach(function (stepKey) {
+                var step = steps[stepKey];
+                step._key = stepKey;
+                var stepStatus = normalizeStepStatus(step.status);
+
+                // Apply status filter (map step status to column status)
+                if (filters.status !== 'all' && stepStatus !== filters.status) return;
+
+                // Apply gate filter
+                if (filters.gate !== 'all') {
+                    var testsPass = !!step.tests_pass;
+                    var reviewPass = !!step.review_approved;
+                    if (filters.gate === 'both_pass' && !(testsPass && reviewPass)) return;
+                    if (filters.gate === 'tests_pending' && testsPass) return;
+                    if (filters.gate === 'review_pending' && (!testsPass || reviewPass)) return;
+                }
+
+                // Determine column
+                var column = dom.board.querySelector('.column[data-status="' + stepStatus + '"]');
+                if (!column) {
+                    column = dom.board.querySelector('.column[data-status="pending"]');
+                }
+
+                var container = column.querySelector('.card-container');
+                var card = createTaskCard(step, epicKey);
+                card.style.animationDelay = (cardIndex * 0.04) + 's';
+                container.appendChild(card);
+                cardIndex++;
+            });
         });
 
         // Add empty-state placeholders to empty columns
@@ -335,6 +409,75 @@
         return div;
     }
 
+    /**
+     * Create a DOM element representing an individual task card for the Tasks tab.
+     * @param {object} step — step object with _key, status, tests_pass, review_approved
+     * @param {string} epicKey — parent epic key
+     * @returns {HTMLElement}
+     */
+    function createTaskCard(step, epicKey) {
+        var status = step.status || 'pending';
+        var testsPass = !!step.tests_pass;
+        var reviewPass = !!step.review_approved;
+        var reviewRounds = step.review_rounds || 0;
+
+        var card = document.createElement('div');
+        card.className = 'task-card task-' + status;
+
+        // Header row: status dot + name + epic tag
+        var header = document.createElement('div');
+        header.className = 'task-card-header';
+
+        var statusDot = document.createElement('span');
+        statusDot.className = 'status-dot status-' + status;
+        statusDot.title = formatLabel(status);
+        header.appendChild(statusDot);
+
+        var name = document.createElement('span');
+        name.className = 'task-card-name';
+        name.textContent = formatLabel(step._key);
+        header.appendChild(name);
+
+        var epicTag = document.createElement('span');
+        epicTag.className = 'task-card-epic-tag';
+        epicTag.textContent = formatLabel(epicKey);
+        header.appendChild(epicTag);
+
+        card.appendChild(header);
+
+        // Footer row: review rounds + gate dots
+        var footer = document.createElement('div');
+        footer.className = 'task-card-footer';
+
+        var left = document.createElement('span');
+        if (reviewRounds > 0) {
+            var roundsBadge = document.createElement('span');
+            roundsBadge.className = 'review-rounds-badge';
+            roundsBadge.textContent = 'R' + reviewRounds;
+            roundsBadge.title = reviewRounds + ' review round(s)';
+            left.appendChild(roundsBadge);
+        }
+        footer.appendChild(left);
+
+        var gates = document.createElement('span');
+        gates.className = 'step-gates';
+
+        var testDot = document.createElement('span');
+        testDot.className = 'gate-dot ' + (testsPass ? 'pass' : 'fail');
+        testDot.title = 'Tests: ' + (testsPass ? 'pass' : 'pending');
+
+        var reviewDot = document.createElement('span');
+        reviewDot.className = 'gate-dot ' + (reviewPass ? 'pass' : 'fail');
+        reviewDot.title = 'Review: ' + (reviewPass ? 'approved' : 'pending');
+
+        gates.appendChild(testDot);
+        gates.appendChild(reviewDot);
+        footer.appendChild(gates);
+
+        card.appendChild(footer);
+        return card;
+    }
+
     // -----------------------------------------------------------------------
     // Filtering
     // -----------------------------------------------------------------------
@@ -352,12 +495,16 @@
     }
 
     /**
-     * Read filter dropdowns and re-render the board.
+     * Read filter dropdowns and re-render the board for the current tab.
      */
     function applyFilters() {
         if (!currentState) return;
         var filters = readFilters();
-        renderBoard(currentState, filters);
+        if (currentTab === 'tasks') {
+            renderTaskBoard(currentState, filters);
+        } else {
+            renderBoard(currentState, filters);
+        }
     }
 
     /**
@@ -434,7 +581,7 @@
             var state = await loadState(STATE_PATH);
             if (state) {
                 updateSummaryBar(state);
-                renderBoard(state, readFilters());
+                applyFilters();
                 updateTimestamp();
             }
         }, interval);
@@ -471,6 +618,23 @@
             'done':        'completed',
             'blocked':     'blocked',
             'failed':      'blocked',
+        };
+        return map[s] || 'pending';
+    }
+
+    /**
+     * Normalize step status values to column data-status values.
+     * Steps only use: pending, in_progress, completed.
+     * @param {string} status
+     * @returns {string}
+     */
+    function normalizeStepStatus(status) {
+        if (!status) return 'pending';
+        var s = String(status).toLowerCase().trim();
+        var map = {
+            'pending':     'pending',
+            'in_progress': 'in_progress',
+            'completed':   'completed',
         };
         return map[s] || 'pending';
     }
@@ -585,6 +749,26 @@
     dom.filterGate.addEventListener('change', applyFilters);
     dom.showSteps.addEventListener('change', applyFilters);
 
+    // Tab switching
+    if (dom.tabEpics) {
+        dom.tabEpics.addEventListener('click', function () {
+            currentTab = 'epics';
+            dom.tabEpics.classList.add('active');
+            dom.tabTasks.classList.remove('active');
+            dom.showSteps.parentElement.style.display = '';
+            applyFilters();
+        });
+    }
+    if (dom.tabTasks) {
+        dom.tabTasks.addEventListener('click', function () {
+            currentTab = 'tasks';
+            dom.tabTasks.classList.add('active');
+            dom.tabEpics.classList.remove('active');
+            dom.showSteps.parentElement.style.display = 'none';
+            applyFilters();
+        });
+    }
+
     // -----------------------------------------------------------------------
     // Bootstrap
     // -----------------------------------------------------------------------
@@ -592,7 +776,7 @@
         var state = await loadState(STATE_PATH);
         if (state) {
             updateSummaryBar(state);
-            renderBoard(state, readFilters());
+            applyFilters();
             updateTimestamp();
         }
         autoRefresh(REFRESH_INTERVAL_MS);
