@@ -1,0 +1,26 @@
+# .harnessrc — Per-project configuration overrides for one-shot-build harness
+# All values below are defaults. Uncomment and modify to override.
+
+# Circuit breaker thresholds
+# circuit_breaker:
+#   no_progress_threshold: 3
+#   same_error_threshold: 5
+#   max_review_rounds: 5
+#   output_decline_threshold: 70
+#   permission_denial_threshold: 2
+
+# Rate limiting
+# rate_limit:
+#   max_calls_per_hour: 100
+
+# Agent configuration
+# agent:
+#   developer_model: "sonnet"
+#   reviewer_model: "sonnet"
+#   replanning_model: "sonnet"
+
+# Testing
+# testing:
+#   test_command: "pytest kyros-agent-workflow/tests/ -v"
+#   lint_command: "ruff check kyros-agent-workflow/src/ kyros-agent-workflow/tests/"
+#   format_command: "ruff format kyros-agent-workflow/src/ kyros-agent-workflow/tests/"
