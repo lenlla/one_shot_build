@@ -1,0 +1,10 @@
+name: "data-loading"
+description: "Load the customers CSV, validate schema, handle missing values, and output a clean DataFrame"
+acceptance_criteria:
+  - "CSV is loaded into a pandas DataFrame"
+  - "Schema matches expected columns: age, tenure_months, monthly_spend, support_tickets, churned"
+  - "customer_id column is dropped"
+  - "No null values remain after cleaning"
+  - "Unit tests verify loading, schema validation, and null handling"
+dependencies: []
+estimated_steps: 3
