@@ -1,0 +1,11 @@
+name: "model-training"
+description: "Train a logistic regression model to predict churn, evaluate with accuracy and classification report"
+acceptance_criteria:
+  - "Data is split into train/test sets (80/20)"
+  - "LogisticRegression model is trained on training set"
+  - "Model accuracy is reported on test set"
+  - "Classification report is generated and saved"
+  - "Unit tests verify train/test split, model fitting, and prediction output"
+dependencies:
+  - "data-loading"
+estimated_steps: 4
