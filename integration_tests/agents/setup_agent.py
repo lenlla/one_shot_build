@@ -22,6 +22,13 @@ PHASE_SKILL_MAP = {
     "execute-plan": "skills/execute-plan/SKILL.md",
 }
 
+PHASE_COMMAND_MAP = {
+    "init": "harness-init",
+    "profile-data": "profile-data",
+    "define-epics": "define-epics",
+    "execute-plan": "execute-plan",
+}
+
 
 def generate_prompt(
     phase: str,
@@ -63,13 +70,14 @@ def generate_prompt(
         "so the session can complete with minimal back-and-forth."
     )
 
+    command_name = PHASE_COMMAND_MAP[phase]
     user_prompt = (
-        f"Generate a prompt for the '/{phase}' command.\n\n"
+        f"Generate a prompt for the '/{command_name}' command.\n\n"
         f"## Skill definition\n\n{skill_content}\n\n"
         f"## Analyst context (known answers)\n\n```yaml\n{context_yaml}```\n\n"
         f"## Instructions\n\n"
         f"Write a single prompt that:\n"
-        f"1. Invokes the /{phase} command with appropriate arguments\n"
+        f"1. Invokes the /{command_name} command with appropriate arguments\n"
         f"2. Pre-supplies all known answers inline so Claude doesn't need to ask\n"
         f"3. Tells Claude to proceed without asking for confirmation where possible\n"
         f"4. Is concise but complete\n"

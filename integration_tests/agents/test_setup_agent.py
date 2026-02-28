@@ -14,7 +14,7 @@ def test_generate_prompt_for_init():
     with open(FIXTURES_DIR / "analyst-context.yaml") as f:
         context = yaml.safe_load(f)
     prompt = generate_prompt("init", context, PLUGIN_DIR)
-    assert "/init" in prompt
+    assert "/harness-init" in prompt
     assert context["project_name"] in prompt
 
 

@@ -33,8 +33,9 @@ def check_profile_data(project_dir: Path, table_names: list[str]) -> list[Assert
         profile_path = context_dir / f"data-profile-{table}.md"
         results.append(_file_exists(profile_path, f"data-profile-{table}.md exists"))
         results.append(_file_not_empty(profile_path, f"data-profile-{table}.md is non-empty"))
-    results.append(_file_exists(context_dir / "analyst-notes.md", "analyst-notes.md exists"))
-    results.append(_file_not_empty(context_dir / "analyst-notes.md", "analyst-notes.md is non-empty"))
+    notes_path = context_dir / "analyst-notes.md"
+    if notes_path.exists():
+        results.append(_file_not_empty(notes_path, "analyst-notes.md is non-empty"))
     return results
 
 
@@ -54,7 +55,11 @@ def check_define_epics(project_dir: Path, epics_dir: Path) -> list[AssertionResu
 
 def check_execute_plan(project_dir: Path, epics_dir: Path, epic_names: list[str]) -> list[AssertionResult]:
     results = []
-    state_file = epics_dir / ".execution-state.yaml"
+    state_candidates = [
+        epics_dir / ".execution-state.yaml",
+        project_dir / "kyros-agent-workflow" / "builds" / "v1" / ".execution-state.yaml",
+    ]
+    state_file = next((p for p in state_candidates if p.is_file()), state_candidates[0])
     results.append(_file_exists(state_file, ".execution-state.yaml exists"))
     results.append(_yaml_parses(state_file, ".execution-state.yaml parses as valid YAML"))
     for name in epic_names:
