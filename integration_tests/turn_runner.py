@@ -47,6 +47,7 @@ def run_turn(
             "--dangerously-skip-permissions",
             "--max-turns",
             str(max_turns),
+            "--verbose",
             "--output-format",
             "stream-json",
         ]
@@ -69,8 +70,8 @@ def run_turn(
         stderr = completed.stderr or ""
         exit_code = completed.returncode
     except subprocess.TimeoutExpired as exc:
-        stdout = exc.stdout or ""
-        stderr = exc.stderr or ""
+        stdout = _to_text(exc.stdout)
+        stderr = _to_text(exc.stderr)
         exit_code = 124
         timed_out = True
 
@@ -133,6 +134,14 @@ def _safe_load_json(line: str) -> dict[str, Any] | None:
         return json.loads(line)
     except json.JSONDecodeError:
         return None
+
+
+def _to_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
 
 
 def _extract_assistant_text(payload: dict[str, Any]) -> list[str]:
