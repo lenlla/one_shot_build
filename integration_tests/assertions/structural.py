@@ -34,8 +34,8 @@ def check_profile_data(project_dir: Path, table_names: list[str]) -> list[Assert
         results.append(_file_exists(profile_path, f"data-profile-{table}.md exists"))
         results.append(_file_not_empty(profile_path, f"data-profile-{table}.md is non-empty"))
     notes_path = context_dir / "analyst-notes.md"
-    if notes_path.exists():
-        results.append(_file_not_empty(notes_path, "analyst-notes.md is non-empty"))
+    results.append(_file_exists(notes_path, "analyst-notes.md exists"))
+    results.append(_file_not_empty(notes_path, "analyst-notes.md is non-empty"))
     return results
 
 

@@ -1,16 +1,14 @@
 """Edge-case tests for resume-after-interrupt and DoD failure auto-fix."""
 
 import shutil
-import signal
 import subprocess
-import time
 from pathlib import Path
 
 import pytest
 import yaml
 
-from integration_tests.agents.responder_agent import LiveResponder
-from integration_tests.claude_runner import ClaudeRunner
+from integration_tests.playbooks import resume_playbook
+from integration_tests.turn_runner import run_turn
 
 PLUGIN_DIR = Path(__file__).parent.parent
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "synthetic"
@@ -37,34 +35,57 @@ def _setup_full_project(test_project_dir):
 
 
 def test_resume_after_interrupt(test_project_dir, analyst_context):
-    """With an existing execution state, execute-plan should continue gracefully."""
+    """Execute-plan should create partial state then continue from it on --continue."""
     _setup_full_project(test_project_dir)
-    build_dir = test_project_dir / "kyros-agent-workflow" / "builds" / "v1"
-    build_dir.mkdir(parents=True, exist_ok=True)
-    (build_dir / "epic-specs").mkdir(parents=True, exist_ok=True)
+    build_target = "kyros-agent-workflow/builds/v1"
+    _prepare_build_epics(test_project_dir, build_target)
+    state_candidates = [
+        test_project_dir / "epics" / "v1" / ".execution-state.yaml",
+        test_project_dir / "kyros-agent-workflow" / "builds" / "v1" / ".execution-state.yaml",
+    ]
+    logs_dir = test_project_dir / ".integration-logs" / "resume"
 
-    state_file = build_dir / ".execution-state.yaml"
-    with open(state_file, "w") as f:
-        yaml.dump(
-            {
-                "started_at": "2026-02-19T10:00:00Z",
-                "mode": "interactive",
-                "epics": {"data-loading": {"status": "building"}},
-            },
-            f,
-        )
+    start_turn = resume_playbook.turns[0]
+    resume_turn = resume_playbook.turns[1]
 
-    resume_responder = LiveResponder(analyst_context)
-    runner = ClaudeRunner(working_dir=test_project_dir, timeout=120, plugin_dir=PLUGIN_DIR)
-    transcript = runner.run_interactive(
-        "/execute-plan kyros-agent-workflow/builds/v1",
-        responder=resume_responder.as_callable(),
-        phase_timeout=120,
+    start_result = run_turn(
+        prompt=start_turn.render_prompt(target=build_target),
+        working_dir=test_project_dir,
+        plugin_dir=PLUGIN_DIR,
+        max_turns=start_turn.max_turns,
+        timeout=240,
+        log_path=logs_dir / "turn-01.log",
+    )
+    assert start_result.exit_code == 0, f"Initial execution turn failed with exit code {start_result.exit_code}"
+
+    state_file = _first_existing(state_candidates)
+    assert state_file.exists(), "Execution state should still exist"
+    before_state = _read_state(state_file)
+    before_raw = state_file.read_text()
+
+    resume_result = run_turn(
+        prompt=resume_turn.render_prompt(target=build_target),
+        working_dir=test_project_dir,
+        plugin_dir=PLUGIN_DIR,
+        continue_session=True,
+        max_turns=resume_turn.max_turns,
+        timeout=240,
+        log_path=logs_dir / "turn-02.log",
     )
 
-    full_text = " ".join(t["content"] for t in transcript.turns).lower()
-    assert state_file.exists(), "Execution state should still exist"
-    assert len(full_text.strip()) > 0, "Execute-plan should produce output with existing state"
+    assert "--continue" in resume_result.command, "Resume turn must run with --continue"
+    assert resume_result.exit_code == 0, f"Resume turn failed with exit code {resume_result.exit_code}"
+
+    state_file = _first_existing(state_candidates)
+    after_state = _read_state(state_file)
+    after_raw = state_file.read_text()
+
+    assert before_raw != after_raw, "Execution state must progress after resume turn"
+    assert before_state.get("started_at") == after_state.get("started_at"), (
+        "Resume turn appears to have reset execution state started_at. "
+        f"text_excerpt={_excerpt(resume_result.assistant_texts)}"
+    )
+    assert before_state.get("epics") != after_state.get("epics"), "Epic state did not advance after resume"
 
 
 def test_dod_failure_autofix(test_project_dir, analyst_context):
@@ -130,3 +151,27 @@ def test_quality_scan_advisory(test_project_dir, analyst_context):
     # Quality scan should complete (exit 0 — advisory, not blocking)
     # It may or may not detect unused imports depending on whether ruff is configured
     assert result.returncode == 0 or "unused" in (result.stdout + result.stderr).lower()
+
+
+def _first_existing(paths: list[Path]) -> Path:
+    return next((path for path in paths if path.exists()), paths[0])
+
+
+def _read_state(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    with open(path) as f:
+        data = yaml.safe_load(f) or {}
+    return data if isinstance(data, dict) else {}
+
+
+def _excerpt(texts: list[str], limit: int = 240) -> str:
+    return (" ".join(texts)[:limit]).replace("\n", " ")
+
+
+def _prepare_build_epics(project_dir: Path, build_target: str) -> None:
+    source_dir = project_dir / "epics" / "v1"
+    target_dir = project_dir / build_target / "epic-specs"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    for source in source_dir.glob("*.yaml"):
+        shutil.copy2(source, target_dir / source.name)
