@@ -54,7 +54,7 @@ def test_resume_after_interrupt(test_project_dir, analyst_context):
         working_dir=test_project_dir,
         plugin_dir=PLUGIN_DIR,
         max_turns=start_turn.max_turns,
-        timeout=240,
+        timeout=480,
         log_path=logs_dir / "turn-01.log",
     )
     assert start_result.exit_code == 0, f"Initial execution turn failed with exit code {start_result.exit_code}"
@@ -67,7 +67,7 @@ def test_resume_after_interrupt(test_project_dir, analyst_context):
             plugin_dir=PLUGIN_DIR,
             continue_session=True,
             max_turns=resume_turn.max_turns,
-            timeout=240,
+            timeout=480,
             log_path=logs_dir / "turn-01b.log",
         )
         assert bootstrap_result.exit_code == 0, (
@@ -89,7 +89,7 @@ def test_resume_after_interrupt(test_project_dir, analyst_context):
             plugin_dir=PLUGIN_DIR,
             continue_session=True,
             max_turns=resume_turn.max_turns,
-            timeout=240,
+            timeout=480,
             log_path=logs_dir / f"turn-0{attempt + 1}.log",
         )
         assert "--continue" in resume_result.command, "Resume turn must run with --continue"

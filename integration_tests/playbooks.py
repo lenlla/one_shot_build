@@ -101,3 +101,60 @@ circuit_breaker_playbook = Playbook(
     ],
     stop_conditions=["terminal breaker status reached"],
 )
+
+
+profile_data_playbook = Playbook(
+    name="profile-data",
+    turns=[
+        TurnSpec(
+            prompt_template=(
+                "/one-shot-build:profile-data {table_path}\n"
+                "Complete profiling now. If prompted about existing profiles, choose overwrite.\n"
+                "After profiling, ensure kyros-agent-workflow/docs/context/analyst-notes.md exists with target and key notes."
+            ),
+            max_turns=6,
+            required_signals=["profile", "Task", "data-profile"],
+        ),
+        TurnSpec(
+            prompt_template=(
+                "Continue the previous profile-data run and finish all remaining actions.\n"
+                "Ensure both data-profile output and analyst-notes.md are written."
+            ),
+            max_turns=6,
+            required_signals=["continue", "profile", "analyst-notes"],
+        ),
+    ],
+    stop_conditions=["profile artifacts written"],
+)
+
+
+execute_plan_playbook = Playbook(
+    name="execute-plan",
+    turns=[
+        TurnSpec(
+            prompt_template=(
+                "/one-shot-build:execute-plan-autonomously {build_target}\n"
+                "Run full plan->build->submit for all epics in this build.\n"
+                "Do not stop for approvals; continue until epics complete or a terminal halt occurs.\n"
+                "For each epic, ensure git branch epic/<epic-name> exists and tag tdd-baseline-<epic-name> exists."
+            ),
+            max_turns=8,
+            required_signals=["execute-plan", "Task", "epic"],
+        ),
+        TurnSpec(
+            prompt_template=(
+                "Continue the same autonomous execute-plan run.\n"
+                "Proceed until all epics are completed or a terminal halted status is explicit.\n"
+                "Before stopping, verify and create any missing git artifacts:\n"
+                "- branch epic/data-loading\n"
+                "- tag tdd-baseline-data-loading\n"
+                "- branch epic/model-training\n"
+                "- tag tdd-baseline-model-training\n"
+                "Report current epic statuses and artifact verification."
+            ),
+            max_turns=10,
+            required_signals=["continue", "status", "epic"],
+        ),
+    ],
+    stop_conditions=["all epics completed or terminal halt"],
+)

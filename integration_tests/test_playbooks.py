@@ -5,6 +5,8 @@ from integration_tests.playbooks import (
     TurnSpec,
     circuit_breaker_playbook,
     define_epics_playbook,
+    execute_plan_playbook,
+    profile_data_playbook,
     resume_playbook,
 )
 
@@ -45,3 +47,15 @@ def test_circuit_breaker_playbook_has_stop_conditions():
     assert first_prompt.startswith("/one-shot-build:execute-plan-autonomously ")
     assert circuit_breaker_playbook.stop_conditions
     assert "terminal" in " ".join(circuit_breaker_playbook.stop_conditions).lower()
+
+
+def test_profile_data_playbook_uses_profile_command():
+    prompt = profile_data_playbook.turns[0].render_prompt(table_path="customers.csv")
+    assert prompt.startswith("/one-shot-build:profile-data ")
+    assert len(profile_data_playbook.turns) == 2
+
+
+def test_execute_plan_playbook_uses_autonomous_command():
+    prompt = execute_plan_playbook.turns[0].render_prompt(build_target="kyros-agent-workflow/builds/v1")
+    assert prompt.startswith("/one-shot-build:execute-plan-autonomously ")
+    assert len(execute_plan_playbook.turns) == 2

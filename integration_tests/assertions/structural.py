@@ -58,6 +58,7 @@ def check_execute_plan(project_dir: Path, epics_dir: Path, epic_names: list[str]
     state_candidates = [
         epics_dir / ".execution-state.yaml",
         project_dir / "kyros-agent-workflow" / "builds" / "v1" / ".execution-state.yaml",
+        project_dir / "kyros-agent-workflow" / "builds" / "v1" / "epic-specs" / ".execution-state.yaml",
     ]
     state_file = next((p for p in state_candidates if p.is_file()), state_candidates[0])
     results.append(_file_exists(state_file, ".execution-state.yaml exists"))
