@@ -114,9 +114,11 @@ if [[ ${#failures[@]} -gt 0 ]]; then
 fi
 
 # Warnings (non-blocking)
-for warn in "${warnings[@]}"; do
-    echo "  $warn"
-done
+if [[ ${#warnings[@]} -gt 0 ]]; then
+    for warn in "${warnings[@]}"; do
+        echo "  $warn"
+    done
+fi
 
 echo "PASS: Solution doc validates against schema: $(basename "$DOC_PATH")"
 exit 0
