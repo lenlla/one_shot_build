@@ -1,0 +1,28 @@
+name: ci-multiturn-critical
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  multiturn-critical:
+    # Requires a self-hosted runner with claude CLI and authenticated session.
+    runs-on: self-hosted
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify Claude CLI
+        run: |
+          claude --version
+
+      - name: Run critical multi-turn lane
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: ./scripts/test-multiturn-critical.sh
