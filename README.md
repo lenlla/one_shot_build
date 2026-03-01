@@ -146,3 +146,24 @@ The harness guides projects through 5 phases. Use `/next` to advance automatical
 ## Project Status
 
 **Phase: Complete** — All 19 implementation epics built and reviewed. 26 BATS tests passing. Ready for integration testing on a real client project.
+
+## CI Lanes
+
+This repo uses split CI lanes for stability and coverage:
+
+- `ci-fast` (required): deterministic checks (`bats` + assertion unit tests)
+- `ci-multiturn-critical` (PR subset): critical multi-turn integration checks
+- `ci-multiturn-full` (nightly/manual): full multi-turn integration suite
+
+Local commands:
+
+```bash
+npm run test:fast
+npm run test:multiturn:critical
+npm run test:multiturn:full
+```
+
+Notes:
+
+- Multi-turn lanes require `claude` CLI and an authenticated environment.
+- GitHub-hosted runners typically cannot run multi-turn Claude tests; use a self-hosted runner.
