@@ -26,3 +26,10 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: ./scripts/test-multiturn-critical.sh
+
+      - name: Upload multi-turn critical metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: multiturn-critical-metrics
+          path: .integration-metrics/

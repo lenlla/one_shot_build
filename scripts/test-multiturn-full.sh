@@ -12,4 +12,21 @@ fi
 python3 -m pip install --upgrade pip
 python3 -m pip install -r integration_tests/requirements.txt
 
-python3 -m pytest integration_tests -q
+METRICS_DIR="${METRICS_DIR:-.integration-metrics}"
+mkdir -p "$METRICS_DIR/history"
+JUNIT_XML="$METRICS_DIR/full-junit.xml"
+JSONL="$METRICS_DIR/full-metrics.jsonl"
+
+set +e
+python3 -m pytest integration_tests --junitxml="$JUNIT_XML" -q
+PYTEST_EXIT=$?
+set -e
+
+python3 -m integration_tests.metrics --junit "$JUNIT_XML" --jsonl "$JSONL" --lane full
+cp "$JSONL" "$METRICS_DIR/history/full-$(date +%Y%m%d-%H%M%S).jsonl"
+python3 scripts/check-flake-drift.py \
+  --current "$JSONL" \
+  --history-glob "$METRICS_DIR/history/full-*.jsonl" \
+  --mode warn
+
+exit "$PYTEST_EXIT"
