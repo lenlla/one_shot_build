@@ -6,6 +6,7 @@ from integration_tests.playbooks import (
     circuit_breaker_playbook,
     define_epics_playbook,
     execute_plan_playbook,
+    init_playbook,
     profile_data_playbook,
     resume_playbook,
 )
@@ -59,3 +60,9 @@ def test_execute_plan_playbook_uses_autonomous_command():
     prompt = execute_plan_playbook.turns[0].render_prompt(build_target="kyros-agent-workflow/builds/v1")
     assert prompt.startswith("/one-shot-build:execute-plan-autonomously ")
     assert len(execute_plan_playbook.turns) == 2
+
+
+def test_init_playbook_uses_init_command():
+    prompt = init_playbook.turns[0].render_prompt(project_name="integration-test-churn")
+    assert prompt.startswith("/one-shot-build:init ")
+    assert len(init_playbook.turns) == 2

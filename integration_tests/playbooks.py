@@ -158,3 +158,28 @@ execute_plan_playbook = Playbook(
     ],
     stop_conditions=["all epics completed or terminal halt"],
 )
+
+
+init_playbook = Playbook(
+    name="init",
+    turns=[
+        TurnSpec(
+            prompt_template=(
+                "/one-shot-build:init {project_name}\n"
+                "If prompted for project name, use {project_name}.\n"
+                "Complete scaffolding and commit initial project files."
+            ),
+            max_turns=5,
+            required_signals=["init", "scaffold", "CLAUDE.md"],
+        ),
+        TurnSpec(
+            prompt_template=(
+                "Continue the previous init session and finish any remaining scaffold steps.\n"
+                "Confirm CLAUDE.md and kyros-agent-workflow/.harnessrc are present."
+            ),
+            max_turns=5,
+            required_signals=["continue", "harnessrc", "CLAUDE.md"],
+        ),
+    ],
+    stop_conditions=["project scaffold complete"],
+)
