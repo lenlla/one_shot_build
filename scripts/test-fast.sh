@@ -9,4 +9,8 @@ npm ci
 
 python3 -m pip install --upgrade pip
 python3 -m pip install -r integration_tests/requirements.txt
-python3 -m pytest integration_tests/assertions/test_structural.py integration_tests/assertions/test_quality.py -q
+python3 -m pytest \
+  integration_tests/assertions/test_structural.py \
+  integration_tests/assertions/test_quality.py \
+  integration_tests/test_execute_plan_artifacts_fast.py \
+  -q
