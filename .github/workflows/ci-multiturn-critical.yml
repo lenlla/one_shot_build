@@ -40,3 +40,4 @@ jobs:
         with:
           name: multiturn-critical-metrics
           path: .integration-metrics/
+          include-hidden-files: true

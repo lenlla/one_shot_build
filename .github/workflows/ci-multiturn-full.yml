@@ -34,3 +34,4 @@ jobs:
         with:
           name: multiturn-full-metrics
           path: .integration-metrics/
+          include-hidden-files: true
