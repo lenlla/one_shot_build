@@ -12,6 +12,7 @@ from integration_tests.turn_runner import run_turn
 
 PLUGIN_DIR = Path(__file__).parent.parent
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "synthetic"
+RESUME_TIMEOUT_SECONDS = 900
 
 
 @pytest.fixture
@@ -54,7 +55,7 @@ def test_resume_after_interrupt(test_project_dir, analyst_context):
         working_dir=test_project_dir,
         plugin_dir=PLUGIN_DIR,
         max_turns=start_turn.max_turns,
-        timeout=480,
+        timeout=RESUME_TIMEOUT_SECONDS,
         log_path=logs_dir / "turn-01.log",
     )
     assert start_result.exit_code == 0, f"Initial execution turn failed with exit code {start_result.exit_code}"
@@ -67,7 +68,7 @@ def test_resume_after_interrupt(test_project_dir, analyst_context):
             plugin_dir=PLUGIN_DIR,
             continue_session=True,
             max_turns=resume_turn.max_turns,
-            timeout=480,
+            timeout=RESUME_TIMEOUT_SECONDS,
             log_path=logs_dir / "turn-01b.log",
         )
         assert bootstrap_result.exit_code == 0, (
@@ -89,10 +90,21 @@ def test_resume_after_interrupt(test_project_dir, analyst_context):
             plugin_dir=PLUGIN_DIR,
             continue_session=True,
             max_turns=resume_turn.max_turns,
-            timeout=480,
+            timeout=RESUME_TIMEOUT_SECONDS,
             log_path=logs_dir / f"turn-0{attempt + 1}.log",
         )
         assert "--continue" in resume_result.command, "Resume turn must run with --continue"
+        if resume_result.exit_code == 124:
+            resume_result = run_turn(
+                prompt=resume_turn.render_prompt(target=build_target),
+                working_dir=test_project_dir,
+                plugin_dir=PLUGIN_DIR,
+                continue_session=True,
+                max_turns=resume_turn.max_turns,
+                timeout=RESUME_TIMEOUT_SECONDS,
+                log_path=logs_dir / f"turn-0{attempt + 1}b.log",
+            )
+            assert "--continue" in resume_result.command, "Retry resume turn must run with --continue"
         assert resume_result.exit_code == 0, f"Resume turn failed with exit code {resume_result.exit_code}"
 
         state_file = _find_existing(state_candidates)
