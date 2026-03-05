@@ -38,6 +38,18 @@ def test_check_profile_data_fails_without_profile(tmp_path):
     assert len(failures) > 0
 
 
+def test_check_profile_data_fails_without_analyst_notes(tmp_path):
+    """Missing analyst-notes.md should fail strict profile-data structural checks."""
+    _create_valid_init(tmp_path)
+    context_dir = tmp_path / "kyros-agent-workflow" / "docs" / "context"
+    context_dir.mkdir(parents=True, exist_ok=True)
+    (context_dir / "data-profile-customers.md").write_text("# profile")
+
+    results = check_profile_data(tmp_path, table_names=["customers"])
+    failures = [r for r in results if not r.passed]
+    assert any("analyst-notes.md exists" in r.message for r in failures)
+
+
 def test_check_define_epics_passes_on_valid(tmp_path):
     """Valid epic specs pass structural checks."""
     _create_valid_init(tmp_path)

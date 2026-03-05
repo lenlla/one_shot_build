@@ -1,19 +1,18 @@
 """Edge-case tests for resume-after-interrupt and DoD failure auto-fix."""
 
 import shutil
-import signal
 import subprocess
-import time
 from pathlib import Path
 
 import pytest
 import yaml
 
-from integration_tests.agents.responder_agent import LiveResponder
-from integration_tests.claude_runner import ClaudeRunner
+from integration_tests.playbooks import resume_playbook
+from integration_tests.turn_runner import run_turn
 
 PLUGIN_DIR = Path(__file__).parent.parent
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "synthetic"
+RESUME_TIMEOUT_SECONDS = 900
 
 
 @pytest.fixture
@@ -37,56 +36,91 @@ def _setup_full_project(test_project_dir):
 
 
 def test_resume_after_interrupt(test_project_dir, analyst_context):
-    """Kill mid-execution, restart, verify it offers to resume from the right step."""
+    """Execute-plan should create partial state then continue from it on --continue."""
     _setup_full_project(test_project_dir)
-    epics_dir = test_project_dir / "epics" / "v1"
+    build_target = "kyros-agent-workflow/builds/v1"
+    _prepare_build_epics(test_project_dir, build_target)
+    state_candidates = [
+        test_project_dir / "epics" / "v1" / ".execution-state.yaml",
+        test_project_dir / "kyros-agent-workflow" / "builds" / "v1" / ".execution-state.yaml",
+        test_project_dir / "kyros-agent-workflow" / "builds" / "v1" / "epic-specs" / ".execution-state.yaml",
+    ]
+    logs_dir = test_project_dir / ".integration-logs" / "resume"
 
-    # Start execution
-    runner = ClaudeRunner(working_dir=test_project_dir, timeout=120, plugin_dir=PLUGIN_DIR)
-    responder = LiveResponder(analyst_context)
+    start_turn = resume_playbook.turns[0]
+    resume_turn = resume_playbook.turns[1]
 
-    # Run briefly then kill — wait for state file to appear
-    proc = subprocess.Popen(
-        ["claude", "--plugin", str(PLUGIN_DIR)],
-        cwd=test_project_dir,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
+    start_result = run_turn(
+        prompt=start_turn.render_prompt(target=build_target),
+        working_dir=test_project_dir,
+        plugin_dir=PLUGIN_DIR,
+        max_turns=start_turn.max_turns,
+        timeout=RESUME_TIMEOUT_SECONDS,
+        log_path=logs_dir / "turn-01.log",
     )
-    proc.stdin.write("/execute-plan epics/v1\n")
-    proc.stdin.flush()
+    assert start_result.exit_code == 0, f"Initial execution turn failed with exit code {start_result.exit_code}"
 
-    # Wait for state file to be created (up to 60s)
-    state_file = epics_dir / ".execution-state.yaml"
-    for _ in range(60):
-        if state_file.exists():
+    state_file = _find_existing(state_candidates)
+    if state_file is None:
+        bootstrap_result = run_turn(
+            prompt=resume_turn.render_prompt(target=build_target),
+            working_dir=test_project_dir,
+            plugin_dir=PLUGIN_DIR,
+            continue_session=True,
+            max_turns=resume_turn.max_turns,
+            timeout=RESUME_TIMEOUT_SECONDS,
+            log_path=logs_dir / "turn-01b.log",
+        )
+        assert bootstrap_result.exit_code == 0, (
+            f"Bootstrap resume turn failed with exit code {bootstrap_result.exit_code}"
+        )
+        state_file = _find_existing(state_candidates)
+    assert state_file is not None and state_file.exists(), "Execution state should exist after bootstrap/start turns"
+    before_state = _read_state(state_file)
+    before_raw = state_file.read_text()
+
+    resume_result = None
+    after_state = before_state
+    after_raw = before_raw
+    progressed = False
+    for attempt in range(1, 4):
+        resume_result = run_turn(
+            prompt=resume_turn.render_prompt(target=build_target),
+            working_dir=test_project_dir,
+            plugin_dir=PLUGIN_DIR,
+            continue_session=True,
+            max_turns=resume_turn.max_turns,
+            timeout=RESUME_TIMEOUT_SECONDS,
+            log_path=logs_dir / f"turn-0{attempt + 1}.log",
+        )
+        assert "--continue" in resume_result.command, "Resume turn must run with --continue"
+        if resume_result.exit_code == 124:
+            resume_result = run_turn(
+                prompt=resume_turn.render_prompt(target=build_target),
+                working_dir=test_project_dir,
+                plugin_dir=PLUGIN_DIR,
+                continue_session=True,
+                max_turns=resume_turn.max_turns,
+                timeout=RESUME_TIMEOUT_SECONDS,
+                log_path=logs_dir / f"turn-0{attempt + 1}b.log",
+            )
+            assert "--continue" in resume_result.command, "Retry resume turn must run with --continue"
+        assert resume_result.exit_code == 0, f"Resume turn failed with exit code {resume_result.exit_code}"
+
+        state_file = _find_existing(state_candidates)
+        assert state_file is not None and state_file.exists(), "Execution state should exist after resume turn"
+        after_state = _read_state(state_file)
+        after_raw = state_file.read_text()
+        if before_raw != after_raw:
+            progressed = True
             break
-        time.sleep(1)
 
-    # Kill the process
-    proc.terminate()
-    try:
-        proc.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-
-    # Verify state file was created
-    assert state_file.exists(), "Execution state should exist after partial run"
-
-    # Now restart — the responder should answer "resume"
-    resume_responder = LiveResponder(analyst_context)
-    runner2 = ClaudeRunner(working_dir=test_project_dir, timeout=120, plugin_dir=PLUGIN_DIR)
-    transcript = runner2.run_interactive(
-        "/execute-plan epics/v1",
-        responder=resume_responder.as_callable(),
-        phase_timeout=120,
+    assert progressed, "Execution state must progress after bounded resume attempts"
+    assert before_state.get("started_at") == after_state.get("started_at"), (
+        "Resume turn appears to have reset execution state started_at. "
+        f"text_excerpt={_excerpt(resume_result.assistant_texts if resume_result else [])}"
     )
-
-    # Check that the transcript mentions resume
-    full_text = " ".join(t["content"] for t in transcript.turns).lower()
-    assert "resume" in full_text or "previous" in full_text or "existing" in full_text, \
-        "Harness should detect existing state and offer to resume"
+    assert before_state.get("epics") != after_state.get("epics"), "Epic state did not advance after resume"
 
 
 def test_dod_failure_autofix(test_project_dir, analyst_context):
@@ -152,3 +186,27 @@ def test_quality_scan_advisory(test_project_dir, analyst_context):
     # Quality scan should complete (exit 0 — advisory, not blocking)
     # It may or may not detect unused imports depending on whether ruff is configured
     assert result.returncode == 0 or "unused" in (result.stdout + result.stderr).lower()
+
+
+def _find_existing(paths: list[Path]) -> Path | None:
+    return next((path for path in paths if path.exists()), None)
+
+
+def _read_state(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    with open(path) as f:
+        data = yaml.safe_load(f) or {}
+    return data if isinstance(data, dict) else {}
+
+
+def _excerpt(texts: list[str], limit: int = 240) -> str:
+    return (" ".join(texts)[:limit]).replace("\n", " ")
+
+
+def _prepare_build_epics(project_dir: Path, build_target: str) -> None:
+    source_dir = project_dir / "epics" / "v1"
+    target_dir = project_dir / build_target / "epic-specs"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    for source in source_dir.glob("*.yaml"):
+        shutil.copy2(source, target_dir / source.name)

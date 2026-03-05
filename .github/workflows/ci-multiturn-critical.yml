@@ -1,0 +1,60 @@
+name: ci-multiturn-critical
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  multiturn-critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Verify Claude CLI
+        run: |
+          claude --version
+
+      - name: Restore critical drift history cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .integration-metrics/history/
+          key: ${{ runner.os }}-critical-drift-history-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-critical-drift-history-
+
+      - name: Run critical multi-turn lane
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DRIFT_MODE: blocking
+          DRIFT_MIN_HISTORY: "3"
+        run: ./scripts/test-multiturn-critical.sh
+
+      - name: Upload multi-turn critical metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: multiturn-critical-metrics
+          path: .integration-metrics/
+          include-hidden-files: true
+
+      - name: Save critical drift history cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .integration-metrics/history/
+          key: ${{ runner.os }}-critical-drift-history-${{ github.run_id }}

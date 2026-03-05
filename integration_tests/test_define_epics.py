@@ -17,6 +17,8 @@ from integration_tests.assertions.structural import check_define_epics
 from integration_tests.assertions.quality import check_define_epics_quality
 from integration_tests.assertions.models import check_results
 from integration_tests.claude_runner import ClaudeRunner
+from integration_tests.playbooks import define_epics_playbook
+from integration_tests.turn_runner import run_turn
 
 logger = logging.getLogger(__name__)
 
@@ -50,22 +52,39 @@ def profiled_project(test_project_dir):
 
 def test_define_epics_structural(profiled_project, analyst_context):
     """Run /define-epics and verify epic specs are created."""
-    runner = ClaudeRunner(
+    build_path = "kyros-agent-workflow/builds/v1"
+    expected_epics_path = profiled_project / build_path / "epic-specs"
+    logs_dir = profiled_project / ".integration-logs" / "define-epics"
+
+    turn1 = define_epics_playbook.turns[0]
+    turn2 = define_epics_playbook.turns[1]
+
+    turn1_result = run_turn(
+        prompt=turn1.render_prompt(build_path=build_path),
         working_dir=profiled_project,
-        timeout=300,
         plugin_dir=PLUGIN_DIR,
+        max_turns=turn1.max_turns,
+        timeout=300,
+        log_path=logs_dir / "turn-01.log",
     )
-    prompt = generate_prompt("define-epics", analyst_context, PLUGIN_DIR)
-    responder = LiveResponder(analyst_context)
-    transcript = runner.run_interactive(prompt, responder=responder.as_callable())
+    turn2_result = run_turn(
+        prompt=turn2.render_prompt(epic_specs_path=f"{build_path}/epic-specs"),
+        working_dir=profiled_project,
+        plugin_dir=PLUGIN_DIR,
+        continue_session=True,
+        max_turns=turn2.max_turns,
+        timeout=300,
+        log_path=logs_dir / "turn-02.log",
+    )
 
-    log_file = profiled_project / "define-epics-transcript.txt"
-    _write_transcript(transcript, log_file)
-
-    # Find the epics directory — we don't know the exact name in advance
-    epics_dir = _find_epics_dir(profiled_project)
-    if epics_dir is None:
-        pytest.fail("No epics directory found after /define-epics")
+    epics_dir = expected_epics_path if expected_epics_path.is_dir() else _find_epics_dir(profiled_project)
+    assert epics_dir is not None, (
+        "No epics directory materialized after strict multi-turn run. "
+        f"turn1_exit={turn1_result.exit_code}, turn2_exit={turn2_result.exit_code}, "
+        f"turn2_timed_out={turn2_result.timed_out}"
+    )
+    yaml_files = sorted(epics_dir.glob("*.yaml"))
+    assert len(yaml_files) >= 2, f"Expected >=2 epic YAML files in {epics_dir}, found {len(yaml_files)}"
 
     results = check_define_epics(profiled_project, epics_dir)
     failures, _ = check_results(results)

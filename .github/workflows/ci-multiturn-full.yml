@@ -1,0 +1,54 @@
+name: ci-multiturn-full
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  multiturn-full:
+    # Requires a self-hosted runner with claude CLI and authenticated session.
+    runs-on: self-hosted
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify Claude CLI
+        run: |
+          claude --version
+
+      - name: Restore full drift history cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .integration-metrics/history/
+          key: ${{ runner.os }}-full-drift-history-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-full-drift-history-
+
+      - name: Run full multi-turn lane
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DRIFT_MODE: blocking
+          DRIFT_MIN_HISTORY: "3"
+        run: ./scripts/test-multiturn-full.sh
+
+      - name: Upload multi-turn full metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: multiturn-full-metrics
+          path: .integration-metrics/
+          include-hidden-files: true
+
+      - name: Save full drift history cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .integration-metrics/history/
+          key: ${{ runner.os }}-full-drift-history-${{ github.run_id }}

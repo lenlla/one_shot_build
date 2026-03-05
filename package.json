@@ -9,7 +9,10 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:fast": "./scripts/test-fast.sh",
+    "test:multiturn:critical": "./scripts/test-multiturn-critical.sh",
+    "test:multiturn:full": "./scripts/test-multiturn-full.sh"
   },
   "repository": {
     "type": "git",

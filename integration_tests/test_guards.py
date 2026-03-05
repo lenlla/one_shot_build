@@ -31,7 +31,7 @@ def test_malformed_harnessrc(test_project_dir):
     subprocess.run(["git", "commit", "-m", "add bad config"], cwd=test_project_dir, capture_output=True)
 
     runner = ClaudeRunner(working_dir=test_project_dir, timeout=60, plugin_dir=PLUGIN_DIR)
-    output = runner.run_print("/status")
+    output = runner.run_print("/harness-status")
     # The harness should handle this gracefully
     assert len(output) > 0
 
@@ -56,7 +56,7 @@ def test_concurrent_execution_warning(test_project_dir):
 
     runner = ClaudeRunner(working_dir=test_project_dir, timeout=120, plugin_dir=PLUGIN_DIR)
     # Start a new execution — should warn about the existing one
-    output = runner.run_print("/status")
+    output = runner.run_print("/harness-status")
     lower = output.lower()
     assert "active" in lower or "execution" in lower or "in progress" in lower or "building" in lower
 

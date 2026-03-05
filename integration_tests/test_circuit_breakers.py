@@ -1,8 +1,4 @@
-"""Edge-case tests for circuit breaker behavior.
-
-These tests deliberately induce failure conditions and verify the harness halts correctly.
-Uses low thresholds in .harnessrc to keep test runtime short.
-"""
+"""Strict circuit-breaker integration tests using deterministic multi-turn execution."""
 
 import shutil
 import subprocess
@@ -11,11 +7,32 @@ from pathlib import Path
 import pytest
 import yaml
 
-from integration_tests.agents.responder_agent import LiveResponder
-from integration_tests.claude_runner import ClaudeRunner
+from integration_tests.playbooks import circuit_breaker_playbook
+from integration_tests.turn_runner import TurnResult
+from integration_tests.turn_runner import run_turn
 
 PLUGIN_DIR = Path(__file__).parent.parent
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "synthetic"
+
+TERMINAL_STATUS_TOKENS = (
+    "halt",
+    "block",
+    "fail",
+    "error",
+    "stop",
+    "terminal",
+    "rejected",
+)
+SUCCESS_STATUS_TOKENS = ("complete", "success", "done")
+BREAKER_SIGNAL_TOKENS = (
+    "circuit breaker",
+    "no progress",
+    "same error",
+    "review rounds",
+    "halt",
+    "stopping",
+    "cannot progress",
+)
 
 
 @pytest.fixture
@@ -24,8 +41,13 @@ def analyst_context():
         return yaml.safe_load(f)
 
 
-def _setup_project_with_epic(test_project_dir, epic_spec: dict, epic_filename: str = "01-test-epic.yaml"):
-    """Helper: set up an initialized project with a single epic and low circuit breaker thresholds."""
+def _setup_project_with_epic(
+    test_project_dir,
+    epic_spec: dict,
+    epic_filename: str = "01-test-epic.yaml",
+    test_command: str | None = None,
+):
+    """Set up initialized project with low breaker thresholds and a single test epic."""
     epics_fixture = FIXTURES_DIR / "epics_output"
     for item in epics_fixture.iterdir():
         dest = test_project_dir / item.name
@@ -34,23 +56,23 @@ def _setup_project_with_epic(test_project_dir, epic_spec: dict, epic_filename: s
         else:
             shutil.copy2(item, dest)
 
-    # Override harnessrc with low thresholds
     harnessrc = test_project_dir / "kyros-agent-workflow" / ".harnessrc"
     config = {
         "circuit_breaker": {
-            "no_progress_threshold": 2,
-            "same_error_threshold": 2,
-            "max_review_rounds": 2,
+            "no_progress_threshold": 1,
+            "same_error_threshold": 1,
+            "max_review_rounds": 1,
         },
         "agent_team": {
             "developer_model": "haiku",
             "reviewer_model": "haiku",
         },
     }
+    if test_command:
+        config["testing"] = {"test_command": test_command}
     with open(harnessrc, "w") as f:
         yaml.dump(config, f)
 
-    # Replace epics with our test epic
     epics_dir = test_project_dir / "epics" / "v1"
     epics_dir.mkdir(parents=True, exist_ok=True)
     for existing in epics_dir.glob("*.yaml"):
@@ -58,13 +80,125 @@ def _setup_project_with_epic(test_project_dir, epic_spec: dict, epic_filename: s
     with open(epics_dir / epic_filename, "w") as f:
         yaml.dump(epic_spec, f)
 
+    build_epics_dir = test_project_dir / "kyros-agent-workflow" / "builds" / "v1" / "epic-specs"
+    build_epics_dir.mkdir(parents=True, exist_ok=True)
+    for existing in build_epics_dir.glob("*.yaml"):
+        existing.unlink()
+    shutil.copy2(epics_dir / epic_filename, build_epics_dir / epic_filename)
+
     subprocess.run(["git", "add", "."], cwd=test_project_dir, capture_output=True)
     subprocess.run(["git", "commit", "-m", "setup test epic"], cwd=test_project_dir, capture_output=True)
-    return epics_dir
+
+    return {
+        "epic_name": epic_spec["name"],
+        "build_target": "kyros-agent-workflow/builds/v1",
+        "state_candidates": [
+            build_epics_dir / ".execution-state.yaml",
+            build_epics_dir.parent / ".execution-state.yaml",
+            epics_dir / ".execution-state.yaml",
+        ],
+    }
+
+
+def _run_circuit_scenario(
+    test_project_dir: Path,
+    scenario_name: str,
+    config: dict,
+    max_continue_turns: int = 3,
+) -> tuple[str, bool, list[str], TurnResult]:
+    """Run bounded continuation loop and return status + diagnostics."""
+    logs_dir = test_project_dir / ".integration-logs" / f"circuit-{scenario_name}"
+    turn1 = circuit_breaker_playbook.turns[0]
+    turn2 = circuit_breaker_playbook.turns[1]
+
+    last_result = run_turn(
+        prompt=turn1.render_prompt(target=config["build_target"]),
+        working_dir=test_project_dir,
+        plugin_dir=PLUGIN_DIR,
+        max_turns=turn1.max_turns,
+        timeout=300,
+        log_path=logs_dir / "turn-01.log",
+    )
+
+    collected_texts = list(last_result.assistant_texts)
+    status = _read_epic_status(config["state_candidates"], config["epic_name"])
+    if _is_terminal_status(status):
+        return status, _has_breaker_signal(collected_texts), collected_texts, last_result
+
+    for index in range(1, max_continue_turns + 1):
+        last_result = run_turn(
+            prompt=turn2.render_prompt(target=config["build_target"]),
+            working_dir=test_project_dir,
+            plugin_dir=PLUGIN_DIR,
+            continue_session=True,
+            max_turns=turn2.max_turns,
+            timeout=300,
+            log_path=logs_dir / f"turn-{index + 1:02d}.log",
+        )
+        collected_texts.extend(last_result.assistant_texts)
+        status = _read_epic_status(config["state_candidates"], config["epic_name"])
+        if _is_terminal_status(status):
+            break
+
+    breaker_signal = _has_breaker_signal(collected_texts)
+    return status, breaker_signal, collected_texts, last_result
+
+
+def _read_epic_status(state_candidates: list[Path], epic_name: str) -> str:
+    for state_file in state_candidates:
+        if not state_file.exists():
+            continue
+        with open(state_file) as f:
+            state = yaml.safe_load(f) or {}
+        if not isinstance(state, dict):
+            continue
+        epics = state.get("epics", {})
+        if isinstance(epics, dict):
+            epic_state = epics.get(epic_name, {})
+            if isinstance(epic_state, dict):
+                status = epic_state.get("status")
+                if isinstance(status, str):
+                    return status
+        if isinstance(epics, list):
+            for epic in epics:
+                if not isinstance(epic, dict):
+                    continue
+                if epic.get("name") != epic_name:
+                    continue
+                status = epic.get("status")
+                if isinstance(status, str):
+                    return status
+    return ""
+
+
+def _has_breaker_signal(assistant_texts: list[str]) -> bool:
+    haystack = " ".join(assistant_texts).lower()
+    return any(token in haystack for token in BREAKER_SIGNAL_TOKENS)
+
+
+def _is_terminal_status(status: str) -> bool:
+    lowered = status.lower()
+    return any(token in lowered for token in TERMINAL_STATUS_TOKENS)
+
+
+def _is_success_status(status: str) -> bool:
+    lowered = status.lower()
+    return any(token in lowered for token in SUCCESS_STATUS_TOKENS)
+
+
+def _diagnostic_message(status: str, breaker_signal: bool, texts: list[str], result: TurnResult) -> str:
+    excerpt = " ".join(texts)[-400:].replace("\n", " ")
+    event_names = [event.get("name", "<unknown>") for event in result.tool_events[-8:]]
+    return (
+        f"status={status!r}, breaker_signal={breaker_signal}, "
+        f"last_tool_events={event_names}, "
+        f"last_text_excerpt={excerpt}, "
+        f"last_log={result.log_path}"
+    )
 
 
 def test_no_progress_halts(test_project_dir, analyst_context):
-    """An impossible acceptance criterion should trigger the no-progress circuit breaker."""
+    """Impossible acceptance criteria should terminate via breaker safeguards."""
     epic = {
         "name": "impossible-accuracy",
         "description": "Achieve impossibly high accuracy on a tiny dataset",
@@ -74,60 +208,42 @@ def test_no_progress_halts(test_project_dir, analyst_context):
         "dependencies": [],
         "estimated_steps": 2,
     }
-    epics_dir = _setup_project_with_epic(test_project_dir, epic)
+    config = _setup_project_with_epic(test_project_dir, epic)
 
-    runner = ClaudeRunner(working_dir=test_project_dir, timeout=600, plugin_dir=PLUGIN_DIR)
-    responder = LiveResponder(analyst_context)
-    transcript = runner.run_interactive(
-        "/execute-plan epics/v1",
-        responder=responder.as_callable(),
-        phase_timeout=600,
-    )
+    status, breaker_signal, texts, result = _run_circuit_scenario(test_project_dir, "no-progress", config)
 
-    # Verify the harness stopped — check execution state
-    state_file = epics_dir / ".execution-state.yaml"
-    if state_file.exists():
-        with open(state_file) as f:
-            state = yaml.safe_load(f) or {}
-        epic_state = state.get("epics", {}).get("impossible-accuracy", {})
-        status = epic_state.get("status", "")
-        # Should be blocked or have circuit breaker info
-        assert status != "completed", f"Epic should not have completed — status is '{status}'"
+    assert status, f"Missing epic status. {_diagnostic_message(status, breaker_signal, texts, result)}"
+    assert _is_terminal_status(status) or breaker_signal, _diagnostic_message(status, breaker_signal, texts, result)
+    assert not _is_success_status(status), _diagnostic_message(status, breaker_signal, texts, result)
 
 
 def test_repeated_error_halts(test_project_dir, analyst_context):
-    """A broken dependency should trigger the repeated-error circuit breaker."""
+    """Broken dependency criteria should terminate via repeated-error safeguards."""
     epic = {
         "name": "broken-import",
-        "description": "An epic that requires a nonexistent library",
+        "description": "Simple implementation that will repeatedly fail due to broken test command",
         "acceptance_criteria": [
-            "Code imports and uses nonexistent_lib.magic_function()",
-            "Unit test verifies magic_function returns expected output",
+            "Create a function that returns the string 'ok'",
+            "Add a unit test covering the function",
         ],
         "dependencies": [],
-        "estimated_steps": 2,
+        "estimated_steps": 1,
     }
-    epics_dir = _setup_project_with_epic(test_project_dir, epic)
-
-    runner = ClaudeRunner(working_dir=test_project_dir, timeout=600, plugin_dir=PLUGIN_DIR)
-    responder = LiveResponder(analyst_context)
-    transcript = runner.run_interactive(
-        "/execute-plan epics/v1",
-        responder=responder.as_callable(),
-        phase_timeout=600,
+    config = _setup_project_with_epic(
+        test_project_dir,
+        epic,
+        test_command="definitely_not_a_real_test_command_12345",
     )
 
-    state_file = epics_dir / ".execution-state.yaml"
-    if state_file.exists():
-        with open(state_file) as f:
-            state = yaml.safe_load(f) or {}
-        epic_state = state.get("epics", {}).get("broken-import", {})
-        status = epic_state.get("status", "")
-        assert status != "completed", f"Epic should not have completed — status is '{status}'"
+    status, breaker_signal, texts, result = _run_circuit_scenario(test_project_dir, "same-error", config)
+
+    assert status, f"Missing epic status. {_diagnostic_message(status, breaker_signal, texts, result)}"
+    assert _is_terminal_status(status) or breaker_signal, _diagnostic_message(status, breaker_signal, texts, result)
+    assert not _is_success_status(status), _diagnostic_message(status, breaker_signal, texts, result)
 
 
 def test_review_rounds_exceeded(test_project_dir, analyst_context):
-    """A vague acceptance criterion should trigger max review rounds."""
+    """Vague acceptance criteria should hit review-round safeguards and terminate."""
     epic = {
         "name": "vague-criteria",
         "description": "An epic with criteria too vague for the reviewer to ever approve",
@@ -139,20 +255,10 @@ def test_review_rounds_exceeded(test_project_dir, analyst_context):
         "dependencies": [],
         "estimated_steps": 1,
     }
-    epics_dir = _setup_project_with_epic(test_project_dir, epic)
+    config = _setup_project_with_epic(test_project_dir, epic)
 
-    runner = ClaudeRunner(working_dir=test_project_dir, timeout=600, plugin_dir=PLUGIN_DIR)
-    responder = LiveResponder(analyst_context)
-    transcript = runner.run_interactive(
-        "/execute-plan epics/v1",
-        responder=responder.as_callable(),
-        phase_timeout=600,
-    )
+    status, breaker_signal, texts, result = _run_circuit_scenario(test_project_dir, "review-rounds", config)
 
-    state_file = epics_dir / ".execution-state.yaml"
-    if state_file.exists():
-        with open(state_file) as f:
-            state = yaml.safe_load(f) or {}
-        epic_state = state.get("epics", {}).get("vague-criteria", {})
-        status = epic_state.get("status", "")
-        assert status != "completed", f"Epic should not have completed — status is '{status}'"
+    assert status, f"Missing epic status. {_diagnostic_message(status, breaker_signal, texts, result)}"
+    assert _is_terminal_status(status) or breaker_signal, _diagnostic_message(status, breaker_signal, texts, result)
+    assert not _is_success_status(status), _diagnostic_message(status, breaker_signal, texts, result)
