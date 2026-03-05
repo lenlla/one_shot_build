@@ -55,6 +55,8 @@ def test_execute_plan_artifacts_fail_when_branch_and_tag_missing(tmp_path: Path)
 
 def _init_git_repo(project_dir: Path) -> None:
     subprocess.run(["git", "init"], cwd=project_dir, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=project_dir, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=project_dir, check=True, capture_output=True)
     (project_dir / "README.md").write_text("# test repo\n")
     subprocess.run(["git", "add", "."], cwd=project_dir, check=True, capture_output=True)
     subprocess.run(["git", "commit", "-m", "init"], cwd=project_dir, check=True, capture_output=True)
