@@ -29,9 +29,19 @@ jobs:
         run: |
           claude --version
 
+      - name: Restore critical drift history cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .integration-metrics/history/
+          key: ${{ runner.os }}-critical-drift-history-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-critical-drift-history-
+
       - name: Run critical multi-turn lane
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DRIFT_MODE: blocking
+          DRIFT_MIN_HISTORY: "3"
         run: ./scripts/test-multiturn-critical.sh
 
       - name: Upload multi-turn critical metrics
@@ -41,3 +51,10 @@ jobs:
           name: multiturn-critical-metrics
           path: .integration-metrics/
           include-hidden-files: true
+
+      - name: Save critical drift history cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .integration-metrics/history/
+          key: ${{ runner.os }}-critical-drift-history-${{ github.run_id }}

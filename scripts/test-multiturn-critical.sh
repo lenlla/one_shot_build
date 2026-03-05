@@ -16,6 +16,8 @@ METRICS_DIR="${METRICS_DIR:-.integration-metrics}"
 mkdir -p "$METRICS_DIR/history"
 JUNIT_XML="$METRICS_DIR/critical-junit.xml"
 JSONL="$METRICS_DIR/critical-metrics.jsonl"
+DRIFT_MODE="${DRIFT_MODE:-warn}"
+DRIFT_MIN_HISTORY="${DRIFT_MIN_HISTORY:-3}"
 
 set +e
 python3 -m pytest \
@@ -32,6 +34,7 @@ cp "$JSONL" "$METRICS_DIR/history/critical-$(date +%Y%m%d-%H%M%S).jsonl"
 python3 scripts/check-flake-drift.py \
   --current "$JSONL" \
   --history-glob "$METRICS_DIR/history/critical-*.jsonl" \
-  --mode warn
+  --mode "$DRIFT_MODE" \
+  --min-history "$DRIFT_MIN_HISTORY"
 
 exit "$PYTEST_EXIT"
