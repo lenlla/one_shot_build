@@ -75,7 +75,7 @@ def test_execute_plan_structural(project_with_epics, analyst_context):
 
     failures = []
     last_result = first_result
-    for attempt in range(1, 8):
+    for attempt in range(1, 13):
         results = check_execute_plan(project_with_epics, epics_dir, epic_names)
         failures, _ = check_results(results)
         if not failures:

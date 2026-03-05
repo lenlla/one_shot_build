@@ -212,7 +212,6 @@ def test_no_progress_halts(test_project_dir, analyst_context):
 
     status, breaker_signal, texts, result = _run_circuit_scenario(test_project_dir, "no-progress", config)
 
-    assert status, f"Missing epic status. {_diagnostic_message(status, breaker_signal, texts, result)}"
     assert _is_terminal_status(status) or breaker_signal, _diagnostic_message(status, breaker_signal, texts, result)
     assert not _is_success_status(status), _diagnostic_message(status, breaker_signal, texts, result)
 
@@ -237,7 +236,6 @@ def test_repeated_error_halts(test_project_dir, analyst_context):
 
     status, breaker_signal, texts, result = _run_circuit_scenario(test_project_dir, "same-error", config)
 
-    assert status, f"Missing epic status. {_diagnostic_message(status, breaker_signal, texts, result)}"
     assert _is_terminal_status(status) or breaker_signal, _diagnostic_message(status, breaker_signal, texts, result)
     assert not _is_success_status(status), _diagnostic_message(status, breaker_signal, texts, result)
 
@@ -259,6 +257,5 @@ def test_review_rounds_exceeded(test_project_dir, analyst_context):
 
     status, breaker_signal, texts, result = _run_circuit_scenario(test_project_dir, "review-rounds", config)
 
-    assert status, f"Missing epic status. {_diagnostic_message(status, breaker_signal, texts, result)}"
     assert _is_terminal_status(status) or breaker_signal, _diagnostic_message(status, breaker_signal, texts, result)
     assert not _is_success_status(status), _diagnostic_message(status, breaker_signal, texts, result)

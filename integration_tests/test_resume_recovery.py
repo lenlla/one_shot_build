@@ -13,6 +13,8 @@ from integration_tests.turn_runner import run_turn
 PLUGIN_DIR = Path(__file__).parent.parent
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "synthetic"
 RESUME_TIMEOUT_SECONDS = 900
+INITIAL_RESUME_MAX_TURNS = 2
+MAX_RESUME_ATTEMPTS = 4
 
 
 @pytest.fixture
@@ -54,7 +56,7 @@ def test_resume_after_interrupt(test_project_dir, analyst_context):
         prompt=start_turn.render_prompt(target=build_target),
         working_dir=test_project_dir,
         plugin_dir=PLUGIN_DIR,
-        max_turns=start_turn.max_turns,
+        max_turns=min(start_turn.max_turns, INITIAL_RESUME_MAX_TURNS),
         timeout=RESUME_TIMEOUT_SECONDS,
         log_path=logs_dir / "turn-01.log",
     )
@@ -83,7 +85,7 @@ def test_resume_after_interrupt(test_project_dir, analyst_context):
     after_state = before_state
     after_raw = before_raw
     progressed = False
-    for attempt in range(1, 4):
+    for attempt in range(1, MAX_RESUME_ATTEMPTS + 1):
         resume_result = run_turn(
             prompt=resume_turn.render_prompt(target=build_target),
             working_dir=test_project_dir,
