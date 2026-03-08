@@ -3,7 +3,11 @@
 import yaml
 from pathlib import Path
 
-from integration_tests.agents.setup_agent import generate_prompt, PHASE_SKILL_MAP
+from integration_tests.agents.setup_agent import (
+    PHASE_SKILL_MAP,
+    _enforce_required_context,
+    generate_prompt,
+)
 
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "synthetic"
@@ -41,3 +45,17 @@ def test_prompt_caching(tmp_path):
     prompt1 = generate_prompt("init", context, PLUGIN_DIR, cache_dir=tmp_path)
     prompt2 = generate_prompt("init", context, PLUGIN_DIR, cache_dir=tmp_path)
     assert prompt1 == prompt2
+
+
+def test_enforce_required_context_adds_missing_target_variable():
+    context = {"target_variable": "churned"}
+    prompt = "/profile-data customers.csv\nContext: Predict customer churn."
+    result = _enforce_required_context("profile-data", prompt, context)
+    assert "target variable: churned" in result.lower()
+
+
+def test_enforce_required_context_does_not_duplicate_existing_value():
+    context = {"target_variable": "churned"}
+    prompt = "/profile-data customers.csv\nTarget variable: churned"
+    result = _enforce_required_context("profile-data", prompt, context)
+    assert result.lower().count("churned") == prompt.lower().count("churned")

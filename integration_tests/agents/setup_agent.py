@@ -30,6 +30,14 @@ PHASE_COMMAND_MAP = {
 }
 
 
+REQUIRED_CONTEXT_BY_PHASE = {
+    "init": ("project_name",),
+    "profile-data": ("target_variable",),
+    "define-epics": ("business_objective",),
+    "execute-plan": (),
+}
+
+
 def generate_prompt(
     phase: str,
     analyst_context: dict,
@@ -91,6 +99,7 @@ def generate_prompt(
     )
 
     prompt = response.content[0].text
+    prompt = _enforce_required_context(phase, prompt, analyst_context)
 
     # Cache result
     if cache_dir:
@@ -100,3 +109,27 @@ def generate_prompt(
         logger.info("Cached prompt for %s at %s", phase, cache_file)
 
     return prompt
+
+
+def _enforce_required_context(phase: str, prompt: str, analyst_context: dict) -> str:
+    """Append required analyst context fields when the model omits them."""
+    required_keys = REQUIRED_CONTEXT_BY_PHASE.get(phase, ())
+    missing_lines: list[str] = []
+    lowered_prompt = prompt.lower()
+
+    for key in required_keys:
+        value = analyst_context.get(key)
+        if not value or not isinstance(value, str):
+            continue
+        if value.lower() in lowered_prompt:
+            continue
+        pretty_key = key.replace("_", " ")
+        missing_lines.append(f"{pretty_key}: {value}")
+
+    if not missing_lines:
+        return prompt
+
+    suffix = "\n".join(missing_lines)
+    if prompt.endswith("\n"):
+        return f"{prompt}{suffix}\n"
+    return f"{prompt}\n\n{suffix}\n"
